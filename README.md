@@ -77,3 +77,4 @@ creation de sqlite.go permettant de handle la creation de la db
 creation du main.go permettant de handle toutes le fonctions et le serveur
 lancement du main.go >> sqlite pour creer la db
 verifier la localisation de la db et son arbo
+creation d'un index.html pour verifier que go sert bien le fichier
