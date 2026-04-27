@@ -6,6 +6,7 @@ import (
 	"forum-certif/backend/utils"
 	"net/http"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -29,15 +30,19 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 		// 3. HACHAGE du mot de passe
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
-			http.Error(w, "Erreur lors du hachage", http.StatusInternalServerError)
+			http.Error(w, "Erreur hachage", http.StatusInternalServerError)
 			return
 		}
 
-		// 4. INSERTION dans la base de données
+		// --- NOUVEAUTÉ : GÉNÉRATION DE L'ID UNIQUE ---
+		newID := uuid.New().String()
+
+		// 4. INSERTION avec le nouvel ID
 		query := `INSERT INTO users (id, nickname, age, gender, first_name, last_name, email, password) 
 				  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 
-		_, err = db.Exec(query, user.Nickname, user.Nickname, user.Age, user.Gender, user.FirstName, user.LastName, user.Email, string(hashedPassword))
+		// On remplace le premier paramètre par newID
+		_, err = db.Exec(query, newID, user.Nickname, user.Age, user.Gender, user.FirstName, user.LastName, user.Email, string(hashedPassword))
 
 		if err != nil {
 			http.Error(w, "Utilisateur ou Email déjà existant", http.StatusConflict)
