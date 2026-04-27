@@ -78,3 +78,10 @@ creation du main.go permettant de handle toutes le fonctions et le serveur
 lancement du main.go >> sqlite pour creer la db
 verifier la localisation de la db et son arbo
 creation d'un index.html pour verifier que go sert bien le fichier
+creation d'une structure user
+instalation de bcrypt pour crypter le mdp de l'utilisateur (go get golang.org/x/crypto/bcrypt)
+creation d'une structure session
+creation de auth.go pour handle les inscriptions et connexions
+ajout de la route d'auth dans le main.go
+test ajout user : curl -i -X POST http://localhost:8080/api/register \ -H "Content-Type: application/json" \ -d "{\"nickname\":\"Tester01\" \"age\":25,\"gender\":\"M\",\"firstName\":\"Jean\",\"lastName\":\"Dupont\",\"email\":\"test@example.com\",\"password\":\"password123\"}"
+

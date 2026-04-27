@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"forum-certif/backend/database"
+	"forum-certif/backend/handlers"
 	"log"
 	"net/http"
 )
@@ -35,6 +36,8 @@ func main() {
 	http.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Pong ! Le serveur Go fonctionne.")
 	})
+
+	http.HandleFunc("/api/register", handlers.RegisterHandler(db))
 
 	fmt.Println("🚀 Serveur lancé sur : http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
