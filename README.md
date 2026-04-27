@@ -86,5 +86,9 @@ ajout de la route d'auth dans le main.go
 test ajout user : curl -i -X POST http://localhost:8080/api/register \ -H "Content-Type: application/json" \ -d "{\"nickname\":\"Tester01\" \"age\":25,\"gender\":\"M\",\"firstName\":\"Jean\",\"lastName\":\"Dupont\",\"email\":\"test@example.com\",\"password\":\"password123\"}"
 installation uuid de google pour eviter tout probleme d'id en cas de changement de pseudo ou les messages disparaissent etc... (go get github.com/google/uuid)
 maintenant que chaque utilisateur a son id propre il est temps de pouvoir se log
+ajout d'un debut d'interface modulaire via app.js en fonction de la route pour tester les log et register
+creation de style.css pour le style principal
+
+
 
 
