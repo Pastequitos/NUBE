@@ -21,11 +21,11 @@ Développement d'un forum en Single Page Application (SPA) avec messagerie insta
 - [x] **Sécurité Backend**
     - [x] Hashage des mots de passe avec `bcrypt`.
     - [x] Génération d'UUID pour les IDs.
-    - [ ] Gestion des sessions (Store en BDD + Cookie HTTP-Only).
+    - [x] Gestion des sessions (Store en BDD + Cookie HTTP-Only).
 - [ ] **Logique d'Auth (Routes API)**
-    - [ ] Endpoint `/api/register`.
-    - [ ] Endpoint `/api/login` (Nickname ou Email).
-    - [ ] Endpoint `/api/logout`.
+    - [x] Endpoint `/api/register`.
+    - [x] Endpoint `/api/login` (Nickname ou Email).
+    - [x] Endpoint `/api/logout`.
 - [ ] **Interface SPA (JS)**
     - [ ] Routeur JS (changement de vue sans rechargement).
     - [ ] Formulaires d'inscription et de connexion.
