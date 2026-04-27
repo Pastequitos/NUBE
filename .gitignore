@@ -1,0 +1,13 @@
+# Base de données
+forum.db
+
+# Binaires compilés (si tu fais un go build)
+forum_bin
+*.exe
+
+# Dépendances (même si Go gère ça bien, c'est propre)
+vendor/
+
+# OS spécifiques
+.DS_Store
+Thumbs.db

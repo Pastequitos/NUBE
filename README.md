@@ -66,3 +66,14 @@ Développement d'un forum en Single Page Application (SPA) avec messagerie insta
 1. Cloner le repo : `git clone [url-du-repo]`
 2. Lancer le serveur : `go run backend/main.go`
 3. Accéder à l'app : `http://localhost:8080`
+
+
+
+creation du git
+creation des dossiers back et front
+init go mod
+import go sqlite3 go get ("github.com/mattn/go-sqlite3")
+creation de sqlite.go permettant de handle la creation de la db
+creation du main.go permettant de handle toutes le fonctions et le serveur
+lancement du main.go >> sqlite pour creer la db
+verifier la localisation de la db et son arbo
