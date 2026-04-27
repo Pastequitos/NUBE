@@ -18,9 +18,9 @@ Développement d'un forum en Single Page Application (SPA) avec messagerie insta
     - [x] Activation des clés étrangères (`PRAGMA`).
 
 ### 👤 Phase 2 : Authentification (Backend & Frontend)
-- [ ] **Sécurité Backend**
-    - [ ] Hashage des mots de passe avec `bcrypt`.
-    - [ ] Génération d'UUID pour les IDs.
+- [x] **Sécurité Backend**
+    - [x] Hashage des mots de passe avec `bcrypt`.
+    - [x] Génération d'UUID pour les IDs.
     - [ ] Gestion des sessions (Store en BDD + Cookie HTTP-Only).
 - [ ] **Logique d'Auth (Routes API)**
     - [ ] Endpoint `/api/register`.
