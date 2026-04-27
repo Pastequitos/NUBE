@@ -9,13 +9,13 @@ Développement d'un forum en Single Page Application (SPA) avec messagerie insta
 ## 🗺️ Road Map du Projet
 
 ### 🏗️ Phase 1 : Architecture & Fondations
-- [ ] **Initialisation du projet**
-    - [ ] `go mod init` et structure des dossiers.
-    - [ ] Configuration de Git (Main, Develop).
-- [ ] **Persistance des données (SQLite)**
-    - [ ] Création du script d'initialisation `database/sqlite.go`.
-    - [ ] Définition des tables (Users, Posts, Comments, Messages, Sessions).
-    - [ ] Activation des clés étrangères (`PRAGMA`).
+- [x] **Initialisation du projet**
+    - [x] `go mod init` et structure des dossiers.
+    - [x] Configuration de Git (Main, Develop).
+- [x] **Persistance des données (SQLite)**
+    - [x] Création du script d'initialisation `database/sqlite.go`.
+    - [x] Définition des tables (Users, Posts, Comments, Messages, Sessions).
+    - [x] Activation des clés étrangères (`PRAGMA`).
 
 ### 👤 Phase 2 : Authentification (Backend & Frontend)
 - [ ] **Sécurité Backend**
