@@ -1,16 +1,18 @@
 package handlers
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"sync"
+
 	"github.com/gorilla/websocket"
 )
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
 type Client struct {
@@ -27,6 +29,13 @@ type Hub struct {
 	mu         sync.Mutex
 }
 
+type Message struct {
+	Type      string `json:"type"`
+	Sender    string `json:"sender"`
+	Content   string `json:"content"`
+	ChannelID string `json:"channel_id"`
+}
+
 func NewHub() *Hub {
 	return &Hub{
 		Clients:    make(map[*Client]bool),
@@ -35,7 +44,6 @@ func NewHub() *Hub {
 		Unregister: make(chan *Client),
 	}
 }
-
 
 func (h *Hub) Run() {
 	for {
@@ -71,21 +79,32 @@ func (h *Hub) Run() {
 
 // --- LE HANDLER PRINCIPAL ---
 
-func ServeWs(hub *Hub) http.HandlerFunc {
+func ServeWs(hub *Hub, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(w, r, nil)
+		// 1. Récupérer le cookie
+		cookie, err := r.Cookie("session_token")
 		if err != nil {
-			fmt.Println("Erreur Upgrade:", err)
+			return // Pas de cookie, pas de chat
+		}
+
+		// 2. Chercher le pseudo en BDD
+		var nickname string
+		err = db.QueryRow("SELECT u.nickname FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.id = ?", cookie.Value).Scan(&nickname)
+		if err != nil {
 			return
 		}
 
-		// Pour l'instant "Anonyme", on injectera le pseudo via la session juste après
-		client := &Client{
-			Nickname: "Anonyme", 
-			Conn:     conn, 
-			Send:     make(chan []byte, 256),
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
 		}
 
+		// 3. Créer le client avec son VRAI pseudo
+		client := &Client{
+			Nickname: nickname,
+			Conn:     conn,
+			Send:     make(chan []byte, 256),
+		}
 		hub.Register <- client
 
 		go client.WritePump()
@@ -101,8 +120,13 @@ func (c *Client) ReadPump(hub *Hub) {
 	for {
 		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
+			fmt.Printf("❌ Erreur lecture de %s: %v\n", c.Nickname, err)
 			break
 		}
+
+/* 		fmt.Printf("\n📩 Message reçu de [%s] :\n", c.Nickname)
+		fmt.Printf("   Contenu brut: %s\n", string(message)) */
+
 		hub.Broadcast <- message
 	}
 }

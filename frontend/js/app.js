@@ -10,6 +10,14 @@ function connectWS() {
     socket.onopen = () => {
         console.log("🚀 WebSocket : Connecté au serveur !");
     };
+    socket.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        const list = document.getElementById('message-list');
+        if (list) {
+            list.innerHTML += `<p><strong>${msg.sender}:</strong> ${msg.content}</p>`;
+            list.scrollTop = list.scrollHeight; // Scroll auto vers le bas
+        }
+    };
 }
 
 checkAuth();
@@ -24,18 +32,43 @@ function router(page) {
 }
 
 function renderHome() {
-    if (currentUser) {
-        app.innerHTML = `
-            <h1>Ravi de vous revoir, ${currentUser} !</h1>
-            <p>Le forum est à vous. Bientôt, vous pourrez créer des posts ici.</p>
-            <button onclick="handleLogout()">Se déconnecter</button>
-        `;
-    } else {
-        app.innerHTML = `
-            <h1>Bienvenue sur le Forum</h1>
-            <p>Ceci est l'accueil. Connecte-toi pour discuter en temps réel !</p>
-        `;
+    if (!currentUser) {
+        app.innerHTML = `<h1>Bienvenue</h1><p>Connecte-toi !</p>`;
+        return;
     }
+
+    app.innerHTML = `
+        <div class="discord-container">
+            <aside class="sidebar">
+                <h3>Salons</h3>
+                <div class="channel active"># général</div>
+            </aside>
+            
+            <main class="chat-area">
+                <div id="message-list"></div>
+                <form id="chat-form">
+                    <input type="text" id="chat-input" placeholder="Envoyer un message dans #général">
+                </form>
+            </main>
+        </div>
+    `;
+
+    // Connecter le WebSocket si ce n'est pas déjà fait
+    if (!socket || socket.readyState !== WebSocket.OPEN) connectWS();
+
+    // Gérer l'envoi du message
+    document.getElementById('chat-form').onsubmit = (e) => {
+        e.preventDefault();
+        const input = document.getElementById('chat-input');
+        const msg = {
+            type: "public",
+            sender: currentUser,
+            content: input.value,
+            channel_id: "1" // ID du salon général
+        };
+        socket.send(JSON.stringify(msg)); // On envoie du JSON !
+        input.value = "";
+    };
 }
 
 function renderRegister() {
