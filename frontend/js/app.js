@@ -5,17 +5,22 @@ let currentUser = null;
 let socket;
 
 function connectWS() {
+    // 1. Détecter si on est en HTTP (ws) ou HTTPS (wss)
+    // C'est crucial car Koyeb utilise le HTTPS/WSS par défaut
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     
+    // 2. Récupérer l'adresse actuelle (ex: localhost:8080 ou forum.koyeb.app)
     const host = window.location.host;
     
+    // 3. Assembler l'URL complète
     const wsUrl = `${protocol}//${host}/ws`;
 
     console.log("🔗 Tentative de connexion WebSocket vers :", wsUrl);
+    
     socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
-        console.log("🚀 WebSocket : Connecté au serveur !");
+        console.log("🚀 WebSocket : Connecté avec succès !");
     };
 
     socket.onmessage = (event) => {
@@ -23,7 +28,7 @@ function connectWS() {
         const list = document.getElementById('message-list');
         if (list) {
             list.innerHTML += `<p><strong>${msg.sender}:</strong> ${msg.content}</p>`;
-            list.scrollTop = list.scrollHeight;
+            list.scrollTop = list.scrollHeight; 
         }
     };
 
@@ -32,7 +37,7 @@ function connectWS() {
     };
 
     socket.onclose = () => {
-        console.log("❌ WebSocket : Déconnecté");
+        console.log("❌ WebSocket déconnecté.");
     };
 }
 

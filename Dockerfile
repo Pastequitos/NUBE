@@ -1,33 +1,38 @@
-# --- Étape 1 : Build du binaire ---
+# --- ÉTAPE 1 : Compilation ---
 FROM golang:1.23-alpine AS builder
 
-# On installe les outils nécessaires pour compiler SQLite (CGO)
+# Installation des outils nécessaires pour SQLite (CGO)
 RUN apk add --no-cache gcc musl-dev sqlite-dev
 
 WORKDIR /app
 
-# Copie des fichiers de dépendances
+# Copie des fichiers de dépendances en premier (optimise le cache)
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copie de tout le code
+# Copie tout le reste du projet
 COPY . .
 
-# Compilation du binaire (CGO_ENABLED=1 est obligatoire pour SQLite)
+# Compilation du binaire Go avec support SQLite (CGO_ENABLED=1)
 RUN CGO_ENABLED=1 GOOS=linux go build -o forum-server ./backend/main.go
 
-# --- Étape 2 : Image d'exécution ---
+# --- ÉTAPE 2 : Image finale ---
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates sqlite
 
 WORKDIR /root/
 
-# On récupère le binaire et le dossier frontend depuis le builder
+# On récupère le binaire compilé
 COPY --from=builder /app/forum-server .
+
+# On récupère TOUT le dossier frontend (indispensable pour le HTML/CSS/JS)
 COPY --from=builder /app/frontend ./frontend
 
-# On expose le port 8080 (celui par défaut)
+# Optionnel : On copie la base de données si tu veux des données de test
+# COPY --from=builder /app/forum.db .
+
+# On expose le port défini dans ton main.go
 EXPOSE 8080
 
-# Lancement du serveur
+# Commande de lancement
 CMD ["./forum-server"]

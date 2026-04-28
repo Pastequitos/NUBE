@@ -36,9 +36,13 @@ func main() {
 
 	// Routes Statiques (Frontend)
 	mux.Handle("/frontend/", http.StripPrefix("/frontend/", http.FileServer(http.Dir("./frontend"))))
-	
+
 	// Route par défaut (Sert l'index.html)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
 		http.ServeFile(w, r, "./frontend/index.html")
 	})
 
@@ -58,9 +62,9 @@ func main() {
 	}
 
 	fmt.Println("🚀 Serveur prêt sur http://localhost:" + port)
-	
+
 	// Lancement du serveur avec le logger
-	err = http.ListenAndServe(":" + port, logger(mux))
+	err = http.ListenAndServe(":"+port, logger(mux))
 	if err != nil {
 		log.Fatal("Erreur Serveur:", err)
 	}
