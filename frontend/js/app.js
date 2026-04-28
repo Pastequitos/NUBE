@@ -5,18 +5,34 @@ let currentUser = null;
 let socket;
 
 function connectWS() {
-    socket = new WebSocket("ws://localhost:8080/ws");
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    
+    const host = window.location.host;
+    
+    const wsUrl = `${protocol}//${host}/ws`;
+
+    console.log("🔗 Tentative de connexion WebSocket vers :", wsUrl);
+    socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
         console.log("🚀 WebSocket : Connecté au serveur !");
     };
+
     socket.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         const list = document.getElementById('message-list');
         if (list) {
             list.innerHTML += `<p><strong>${msg.sender}:</strong> ${msg.content}</p>`;
-            list.scrollTop = list.scrollHeight; // Scroll auto vers le bas
+            list.scrollTop = list.scrollHeight;
         }
+    };
+
+    socket.onerror = (error) => {
+        console.error("⚠️ Erreur WebSocket :", error);
+    };
+
+    socket.onclose = () => {
+        console.log("❌ WebSocket : Déconnecté");
     };
 }
 
