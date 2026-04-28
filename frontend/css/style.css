@@ -118,6 +118,7 @@ html {
             margin: 6px;
             width: calc(100% - 36px);
             padding: var(--padding);
+
             #messageInput {
                 min-height: 42px;
                 height: auto;
@@ -128,6 +129,7 @@ html {
                 background-color: transparent;
                 color: #dcddde;
                 padding-inline: 0px;
+
                 input {
                     border: none;
                     padding: none;
@@ -149,5 +151,46 @@ html {
     #userContainer {
         min-width: var(--userContainer);
         background-color: rgb(255, 149, 0);
+
+        .topContainer {
+            display: flex;
+
+            .bannerContainer {
+                min-height: 120px;
+                background-color: black;
+                width: 100%;
+                position: relative;
+
+                .banner {
+                    background-color: blue;
+                }
+            
+                .profilePicture {
+                    left: var(--padding);
+                    height: 100px;
+                    width: 100px;
+                    display: block;
+                    position: absolute;
+                    bottom: 0;
+                    transform: translateY(40%);
+                    background-color: rgb(0, 21, 255);
+                    border-radius: 50%;
+                    
+                }
+                
+                .status {
+                    display: block;
+                    height: 20px;
+                    width: 20px;
+                    border-radius: 50%;
+                    background-color: rgb(0, 255, 64);
+                }
+            }
+
+            .userContainer {
+                position: absolute;
+                background-color: red;
+            }
+        }
     }
 }
