@@ -52,44 +52,53 @@ function router(page) {
     }
 }
 
-function renderHome() {
+// Fonction pour charger un fichier HTML externe
+async function loadComponent(path) {
+    try {
+        const response = await fetch(path);
+        if (!response.ok) throw new Error("Composant introuvable");
+        return await response.text();
+    } catch (err) {
+        console.error(err);
+        return `<p style="color:red">Erreur de chargement du composant.</p>`;
+    }
+}
+
+async function renderHome() {
+    // 1. Si pas connecté, on l'envoie sur la page de connexion
     if (!currentUser) {
-        app.innerHTML = `<h1>Bienvenue</h1><p>Connecte-toi !</p>`;
+        router('login'); 
         return;
     }
 
-    app.innerHTML = `
-        <div class="discord-container">
-            <aside class="sidebar">
-                <h3>Salons</h3>
-                <div class="channel active"># général</div>
-            </aside>
-            
-            <main class="chat-area">
-                <div id="message-list"></div>
-                <form id="chat-form">
-                    <input type="text" id="chat-input" placeholder="Envoyer un message dans #général">
-                </form>
-            </main>
-        </div>
-    `;
+    // 2. Si connecté, on charge le layout principal
+    app.innerHTML = await loadComponent('/frontend/components/main.html');
 
-    // Connecter le WebSocket si ce n'est pas déjà fait
+    // 3. On met à jour l'interface avec les données de l'utilisateur
+    const usernameDisplay = document.getElementById('current-username');
+    if (usernameDisplay) {
+        usernameDisplay.innerText = currentUser;
+    }
+
+    // 4. Lancement du WebSocket
     if (!socket || socket.readyState !== WebSocket.OPEN) connectWS();
 
-    // Gérer l'envoi du message
-    document.getElementById('chat-form').onsubmit = (e) => {
-        e.preventDefault();
-        const input = document.getElementById('chat-input');
-        const msg = {
-            type: "public",
-            sender: currentUser,
-            content: input.value,
-            channel_id: "1" // ID du salon général
+    // 5. Gestion de l'envoi de message
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+        chatForm.onsubmit = (e) => {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const msg = {
+                type: "public",
+                sender: currentUser,
+                content: input.value,
+                channel_id: "1" // En attendant de gérer les vrais serveurs
+            };
+            socket.send(JSON.stringify(msg));
+            input.value = "";
         };
-        socket.send(JSON.stringify(msg)); // On envoie du JSON !
-        input.value = "";
-    };
+    }
 }
 
 function renderRegister() {
@@ -142,22 +151,18 @@ function renderRegister() {
         }
     };
 }
+async function renderLogin() {
+    // 1. On injecte le HTML propre depuis notre fichier
+    app.innerHTML = await loadComponent('/frontend/components/login.html');
 
-function renderLogin() {
-    app.innerHTML = `
-        <h1>Connexion</h1>
-        <form id="loginForm">
-            <input type="text" id="loginInput" placeholder="Email ou Pseudo" required><br>
-            <input type="password" id="passInput" placeholder="Mot de passe" required><br>
-            <button type="submit">Se connecter</button>
-        </form>
-        <p id="loginMessage" style="color:red"></p>
-    `;
+    // 2. Maintenant que le HTML est dans la page, on peut attacher nos événements
+    const loginForm = document.getElementById('loginForm');
+    
+    // Sécurité au cas où le composant n'a pas chargé
+    if (!loginForm) return; 
 
-    document.getElementById('loginForm').onsubmit = async (e) => {
+    loginForm.onsubmit = async (e) => {
         e.preventDefault();
-        
-        // On efface les anciens messages d'erreur
         document.getElementById('loginMessage').innerText = "";
 
         const data = {
@@ -172,20 +177,16 @@ function renderLogin() {
                 body: JSON.stringify(data)
             });
 
-            // On lit le JSON UNE SEULE FOIS !
             const result = await response.json();
 
             if (response.ok) {
-                // Succès 200
                 currentUser = result.nickname;
                 router('home');
             } else {
-                // Erreur 401, on affiche le message du backend Go
                 document.getElementById('loginMessage').innerText = result.message || "Identifiants incorrects";
             }
         } catch (err) { 
-            console.error("Erreur Fetch:", err); 
-            document.getElementById('loginMessage').innerText = "Erreur de connexion au serveur.";
+            console.error("Erreur:", err); 
         }
     };
 }
