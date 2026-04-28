@@ -8,15 +8,15 @@ function connectWS() {
     // 1. Détecter si on est en HTTP (ws) ou HTTPS (wss)
     // C'est crucial car Koyeb utilise le HTTPS/WSS par défaut
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    
+
     // 2. Récupérer l'adresse actuelle (ex: localhost:8080 ou forum.koyeb.app)
     const host = window.location.host;
-    
+
     // 3. Assembler l'URL complète
     const wsUrl = `${protocol}//${host}/ws`;
 
     console.log("🔗 Tentative de connexion WebSocket vers :", wsUrl);
-    
+
     socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
@@ -28,7 +28,7 @@ function connectWS() {
         const list = document.getElementById('message-list');
         if (list) {
             list.innerHTML += `<p><strong>${msg.sender}:</strong> ${msg.content}</p>`;
-            list.scrollTop = list.scrollHeight; 
+            list.scrollTop = list.scrollHeight;
         }
     };
 
@@ -106,6 +106,10 @@ function renderRegister() {
 
     document.getElementById('regForm').onsubmit = async (e) => {
         e.preventDefault();
+        
+        // On nettoie le message d'erreur précédent au cas où
+        document.getElementById('regMessage').innerText = "";
+
         const data = {
             nickname: document.getElementById('nickname').value,
             email: document.getElementById('email').value,
@@ -118,14 +122,24 @@ function renderRegister() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
+            
+            // ⚠️ LE SECRET EST ICI : On lit le JSON UNE SEULE FOIS,
+            // que la requête soit un succès (201) ou une erreur (409)
             const result = await response.json();
+
             if (response.ok) {
-                alert("Compte créé !");
+                // Si c'est OK (Status 200-299)
+                alert("Compte créé avec succès !");
                 router('login');
             } else {
-                document.getElementById('regMessage').innerText = result.message || "Erreur lors de l'inscription";
+                // Si c'est une erreur (Ex: 409 Conflict)
+                // On affiche le message renvoyé par ton backend Go
+                document.getElementById('regMessage').innerText = result.message || "Erreur d'inscription";
             }
-        } catch (err) { console.error(err); }
+        } catch (err) {
+            console.error("Erreur Fetch:", err);
+            document.getElementById('regMessage').innerText = "Erreur de connexion au serveur.";
+        }
     };
 }
 
@@ -142,6 +156,10 @@ function renderLogin() {
 
     document.getElementById('loginForm').onsubmit = async (e) => {
         e.preventDefault();
+        
+        // On efface les anciens messages d'erreur
+        document.getElementById('loginMessage').innerText = "";
+
         const data = {
             login: document.getElementById('loginInput').value,
             password: document.getElementById('passInput').value
@@ -153,21 +171,27 @@ function renderLogin() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
+
+            // On lit le JSON UNE SEULE FOIS !
             const result = await response.json();
 
             if (response.ok) {
+                // Succès 200
                 currentUser = result.nickname;
                 router('home');
             } else {
-                document.getElementById('loginMessage').innerText = "Identifiants incorrects";
+                // Erreur 401, on affiche le message du backend Go
+                document.getElementById('loginMessage').innerText = result.message || "Identifiants incorrects";
             }
-        } catch (err) { console.error(err); }
+        } catch (err) { 
+            console.error("Erreur Fetch:", err); 
+            document.getElementById('loginMessage').innerText = "Erreur de connexion au serveur.";
+        }
     };
 }
 
 async function handleLogout() {
     try {
-        // 1. On appelle le serveur pour détruire la session (côté Go)
         const response = await fetch('/api/logout', {
             method: 'POST'
         });

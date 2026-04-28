@@ -20,13 +20,44 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 
 		var user utils.User
 		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-			http.Error(w, "Données invalides", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Données invalides"})
 			return
 		}
 
+		// --- 1. VÉRIFICATION DE L'EMAIL ---
+		var dummy string
+		err := db.QueryRow("SELECT id FROM users WHERE email = ?", user.Email).Scan(&dummy)
+		if err == nil {
+			// Si on n'a pas d'erreur, l'email existe déjà
+			w.WriteHeader(http.StatusConflict) // 409
+			json.NewEncoder(w).Encode(map[string]string{"message": "Cet email est déjà utilisé."})
+			return
+		} else if err != sql.ErrNoRows {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Erreur serveur (email)"})
+			return
+		}
+
+		// --- 2. VÉRIFICATION DU PSEUDO ---
+		err = db.QueryRow("SELECT id FROM users WHERE nickname = ?", user.Nickname).Scan(&dummy)
+		if err == nil {
+			// Si on n'a pas d'erreur, le pseudo est déjà pris
+			w.WriteHeader(http.StatusConflict) // 409
+			json.NewEncoder(w).Encode(map[string]string{"message": "Ce pseudo est déjà pris. Veuillez en choisir un autre."})
+			return
+		} else if err != sql.ErrNoRows {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Erreur serveur (pseudo)"})
+			return
+		}
+		// ------------------------------------------
+
+		// La suite reste identique (Hachage du mot de passe et Insertion)
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
-			http.Error(w, "Erreur hachage", http.StatusInternalServerError)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Erreur hachage"})
 			return
 		}
 
@@ -36,7 +67,8 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 
 		_, err = db.Exec(query, newID, user.Nickname, user.Age, user.Gender, user.FirstName, user.LastName, user.Email, string(hashedPassword))
 		if err != nil {
-			http.Error(w, "Utilisateur ou Email déjà existant", http.StatusConflict)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Erreur lors de la création du compte"})
 			return
 		}
 
@@ -62,12 +94,16 @@ func LoginHandler(db *sql.DB) http.HandlerFunc {
 		query := `SELECT id, nickname, password FROM users WHERE email = ? OR nickname = ?`
 		err := db.QueryRow(query, creds.Login, creds.Login).Scan(&user.ID, &user.Nickname, &user.Password)
 		if err != nil {
-			http.Error(w, "Identifiants incorrects", http.StatusUnauthorized)
+			// Erreur : Utilisateur non trouvé
+			w.WriteHeader(http.StatusUnauthorized) // 401
+			json.NewEncoder(w).Encode(map[string]string{"message": "Email/Pseudo ou mot de passe incorrect"})
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(creds.Password)); err != nil {
-			http.Error(w, "Identifiants incorrects", http.StatusUnauthorized)
+			// Erreur : Mot de passe faux
+			w.WriteHeader(http.StatusUnauthorized) // 401
+			json.NewEncoder(w).Encode(map[string]string{"message": "Email/Pseudo ou mot de passe incorrect"})
 			return
 		}
 
