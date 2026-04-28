@@ -32,6 +32,11 @@ func main() {
 	// Utilisation d'un ServeMux pour organiser les routes proprement
 	mux := http.NewServeMux()
 
+	hub := handlers.NewHub()
+	go hub.Run()
+
+	mux.HandleFunc("/ws", handlers.ServeWs(hub))
+
 	// 2. GESTION DES FICHIERS STATIQUES
 	fs := http.FileServer(http.Dir("./frontend"))
 	mux.Handle("/static/", http.StripPrefix("/static/", fs))

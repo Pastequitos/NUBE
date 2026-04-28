@@ -27,8 +27,8 @@ Développement d'un forum en Single Page Application (SPA) avec messagerie insta
     - [x] Endpoint `/api/login` (Nickname ou Email).
     - [x] Endpoint `/api/logout`.
 - [ ] **Interface SPA (JS)**
-    - [ ] Routeur JS (changement de vue sans rechargement).
-    - [ ] Formulaires d'inscription et de connexion.
+    - [x] Routeur JS (changement de vue sans rechargement).
+    - [x] Formulaires d'inscription et de connexion.
 
 ### 📝 Phase 3 : Forum (Posts & Commentaires)
 - [ ] **Gestion des Posts**
@@ -88,6 +88,8 @@ installation uuid de google pour eviter tout probleme d'id en cas de changement 
 maintenant que chaque utilisateur a son id propre il est temps de pouvoir se log
 ajout d'un debut d'interface modulaire via app.js en fonction de la route pour tester les log et register
 creation de style.css pour le style principal
+creation du hub.go afin de d'upgrader la connexion en websocket
+mettre en place un write et une readpump
 
 
 

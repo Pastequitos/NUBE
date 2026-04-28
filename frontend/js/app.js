@@ -2,6 +2,15 @@ const app = document.getElementById('app');
 
 // État global de l'application
 let currentUser = null;
+let socket;
+
+function connectWS() {
+    socket = new WebSocket("ws://localhost:8080/ws");
+
+    socket.onopen = () => {
+        console.log("🚀 WebSocket : Connecté au serveur !");
+    };
+}
 
 checkAuth();
 
