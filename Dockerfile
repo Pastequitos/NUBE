@@ -1,5 +1,5 @@
 # --- Étape 1 : Build du binaire ---
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 # On installe les outils nécessaires pour compiler SQLite (CGO)
 RUN apk add --no-cache gcc musl-dev sqlite-dev
