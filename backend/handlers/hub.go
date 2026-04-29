@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -16,9 +18,11 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
+	UserID   string
 	Nickname string
 	Conn     *websocket.Conn
 	Send     chan []byte
+	DB       *sql.DB
 }
 
 type Hub struct {
@@ -34,6 +38,7 @@ type Message struct {
 	Sender    string `json:"sender"`
 	Content   string `json:"content"`
 	ChannelID string `json:"channel_id"`
+	CreatedAt string `json:"created_at"`
 }
 
 func NewHub() *Hub {
@@ -87,9 +92,8 @@ func ServeWs(hub *Hub, db *sql.DB) http.HandlerFunc {
 			return // Pas de cookie, pas de chat
 		}
 
-		// 2. Chercher le pseudo en BDD
-		var nickname string
-		err = db.QueryRow("SELECT u.nickname FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.id = ?", cookie.Value).Scan(&nickname)
+		var nickname, userID string
+		err = db.QueryRow("SELECT u.nickname, u.id FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.id = ?", cookie.Value).Scan(&nickname, &userID)
 		if err != nil {
 			return
 		}
@@ -101,9 +105,11 @@ func ServeWs(hub *Hub, db *sql.DB) http.HandlerFunc {
 
 		// 3. Créer le client avec son VRAI pseudo
 		client := &Client{
+			UserID:   userID, // <-- NOUVEAU
 			Nickname: nickname,
 			Conn:     conn,
 			Send:     make(chan []byte, 256),
+			DB:       db,
 		}
 		hub.Register <- client
 
@@ -120,14 +126,25 @@ func (c *Client) ReadPump(hub *Hub) {
 	for {
 		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
-			fmt.Printf("❌ Erreur lecture de %s: %v\n", c.Nickname, err)
 			break
 		}
 
-/* 		fmt.Printf("\n📩 Message reçu de [%s] :\n", c.Nickname)
-		fmt.Printf("   Contenu brut: %s\n", string(message)) */
+		var msg Message
+		if err := json.Unmarshal(message, &msg); err == nil {
+			msg.CreatedAt = time.Now().Format(time.RFC3339)
 
-		hub.Broadcast <- message
+			msgID := fmt.Sprintf("msg_%d", time.Now().UnixNano())
+
+			_, err = c.DB.Exec("INSERT INTO messages (id, server_id, sender_id, content) VALUES (?, ?, ?, ?)",
+				msgID, msg.ChannelID, c.UserID, msg.Content)
+
+			if err != nil {
+				fmt.Println("❌ Erreur insertion BDD :", err)
+			}
+		}
+
+		newJSON, _ := json.Marshal(msg)
+		hub.Broadcast <- newJSON
 	}
 }
 
@@ -139,5 +156,41 @@ func (c *Client) WritePump() {
 			return
 		}
 		c.Conn.WriteMessage(websocket.TextMessage, message)
+	}
+}
+func GetMessagesHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		// LA NOUVELLE REQUÊTE SQL MAGIQUE
+		query := `
+            SELECT sub.nickname, sub.content, sub.server_id, sub.created_at 
+            FROM (
+                SELECT u.nickname, m.content, m.server_id, m.created_at 
+                FROM messages m 
+                JOIN users u ON m.sender_id = u.id 
+                ORDER BY m.created_at DESC 
+                LIMIT 50
+            ) sub
+            ORDER BY sub.created_at ASC
+        `
+
+		rows, err := db.Query(query)
+		if err != nil {
+			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		var messages []Message
+		for rows.Next() {
+			var msg Message
+			msg.Type = "public"
+			if err := rows.Scan(&msg.Sender, &msg.Content, &msg.ChannelID, &msg.CreatedAt); err == nil {
+				messages = append(messages, msg)
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(messages)
 	}
 }

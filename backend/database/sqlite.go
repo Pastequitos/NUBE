@@ -1,26 +1,24 @@
 package database
 
 import (
-	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
+    "database/sql"
+    _ "github.com/mattn/go-sqlite3"
 )
 
 func InitDB() (*sql.DB, error) {
-	// Connexion à la base de données
-	db, err := sql.Open("sqlite3", "./forum.db")
-	if err != nil {
-		return nil, err
-	}
+    db, err := sql.Open("sqlite3", "./forum.db")
+    if err != nil {
+        return nil, err
+    }
 
-	// 1. Activation des clés étrangères (INDISPENSABLE pour la cohérence)
-	_, err = db.Exec("PRAGMA foreign_keys = ON;")
-	if err != nil {
-		return nil, err
-	}
+    // 1. Activation des clés étrangères
+    _, err = db.Exec("PRAGMA foreign_keys = ON;")
+    if err != nil {
+        return nil, err
+    }
 
-	// 2. Création des tables
-	const schema = `
-    -- Table des utilisateurs
+    // 2. Création des tables
+    const schema = `
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         nickname TEXT UNIQUE NOT NULL,
@@ -33,7 +31,6 @@ func InitDB() (*sql.DB, error) {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Table des sessions
     CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -41,16 +38,16 @@ func InitDB() (*sql.DB, error) {
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- NOUVEAU : Table des Serveurs/Groupes
+    -- NOUVEAU : Table avec la colonne color
     CREATE TABLE IF NOT EXISTS servers (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         owner_id TEXT NOT NULL,
+        color TEXT NOT NULL DEFAULT '#5865F2',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- NOUVEAU : Table des Membres des Serveurs (Qui a rejoint quel serveur)
     CREATE TABLE IF NOT EXISTS server_members (
         server_id TEXT NOT NULL,
         user_id TEXT NOT NULL,
@@ -59,7 +56,6 @@ func InitDB() (*sql.DB, error) {
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- MODIFIÉ : Table des Messages (liés à un serveur et non plus un channel global)
     CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
         server_id TEXT NOT NULL,
@@ -70,7 +66,6 @@ func InitDB() (*sql.DB, error) {
         FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- Table des Messages Privés (MP entre deux utilisateurs - inchangée)
     CREATE TABLE IF NOT EXISTS private_messages (
         id TEXT PRIMARY KEY,
         sender_id TEXT NOT NULL,
@@ -82,10 +77,24 @@ func InitDB() (*sql.DB, error) {
     );
     `
 
-	_, err = db.Exec(schema)
-	if err != nil {
-		return nil, err
-	}
+    _, err = db.Exec(schema)
+    if err != nil {
+        return nil, err
+    }
 
-	return db, nil
+    // 3. INJECTION DE DONNÉES PAR DÉFAUT
+    _, err = db.Exec(`INSERT OR IGNORE INTO users (id, nickname, email, password) 
+        VALUES ('0', 'System', 'system@forum.com', 'none');`)
+    if err != nil {
+        return nil, err
+    }
+
+    // On ajoute aussi la couleur par défaut pour le Salon Général
+    _, err = db.Exec(`INSERT OR IGNORE INTO servers (id, name, owner_id, color) 
+        VALUES ('1', 'Salon Général', '0', '#5865F2');`)
+    if err != nil {
+        return nil, err
+    }
+
+    return db, nil
 }

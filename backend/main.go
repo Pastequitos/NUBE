@@ -52,6 +52,10 @@ func main() {
 	mux.HandleFunc("/api/logout", handlers.LogoutHandler(db))
 	mux.HandleFunc("/api/me", handlers.MeHandler(db))
 
+	mux.HandleFunc("/api/messages", handlers.GetMessagesHandler(db))
+	mux.HandleFunc("/api/servers", handlers.CreateServerHandler(db))
+	mux.HandleFunc("/api/my-servers", handlers.GetServersHandler(db))
+
 	// Route WebSocket (On passe le hub et la db)
 	mux.HandleFunc("/ws", handlers.ServeWs(hub, db))
 

@@ -1,0 +1,39 @@
+<div class="modal-content">
+    <h2>Créer un nouveau salon</h2>
+    <form id="createServerForm">
+        <input type="text" id="serverNameInput" placeholder="Nom du salon" required>
+        
+        <p style="font-size: 14px; margin-bottom: 5px; text-align: left;">Couleur du salon :</p>
+        <div class="color-picker" id="colorPicker">
+            <label>
+                <input type="radio" name="serverColor" value="#5865F2" checked>
+                <span class="color-swatch" style="background-color: #5865F2;"></span>
+            </label>
+            <label>
+                <input type="radio" name="serverColor" value="#3BA559">
+                <span class="color-swatch" style="background-color: #3BA559;"></span>
+            </label>
+            <label>
+                <input type="radio" name="serverColor" value="#FAA61A">
+                <span class="color-swatch" style="background-color: #FAA61A;"></span>
+            </label>
+            <label>
+                <input type="radio" name="serverColor" value="#ED4245">
+                <span class="color-swatch" style="background-color: #ED4245;"></span>
+            </label>
+            <label>
+                <input type="radio" name="serverColor" value="#EB459E">
+                <span class="color-swatch" style="background-color: #EB459E;"></span>
+            </label>
+            <label>
+                <input type="radio" name="serverColor" value="#9B59B6">
+                <span class="color-swatch" style="background-color: #9B59B6;"></span>
+            </label>
+        </div>
+
+        <div class="modal-actions">
+            <button type="button" id="closeModalBtn" class="btn-cancel">Annuler</button>
+            <button type="submit" class="btn-submit">Créer</button>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,48 @@
+.message-item {
+    display: flex;
+    gap: 15px;
+    padding: 10px 15px;
+    margin-bottom: 0px;
+}
+
+.message-item:hover {
+    background-color: #32353b;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    background-color: #7f1fde;
+    border-radius: 8px;
+    flex-shrink: 0; 
+}
+
+.message-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.message-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.message-sender {
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 1rem;
+}
+
+.message-time {
+    font-size: 10px;
+    color: #949ba4;
+}
+
+.message-text {
+    color: #dbdee1;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
