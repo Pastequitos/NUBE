@@ -47,7 +47,7 @@ export function appendMessage(msg) {
     if (msg.message_type === 'system') {
         const systemElement = document.createElement('div');
         systemElement.classList.add('message-item', 'system-join-message');
-        
+
         // On utilise un format plus compact pour la bienvenue (style Discord)
         systemElement.innerHTML = `
             <div class="system-icon">✨</div>
@@ -58,11 +58,11 @@ export function appendMessage(msg) {
         `;
 
         chatContainer.appendChild(systemElement);
-        
+
         // IMPORTANT : On réinitialise lastMessageInfo pour que le prochain message 
         // d'utilisateur ne tente pas de se grouper avec un message système.
         lastMessageInfo = { sender: null, date: null, bodyElement: null };
-        
+
         chatContainer.scrollTop = chatContainer.scrollHeight;
         return; // On s'arrête ici pour les messages système
     }
@@ -133,7 +133,7 @@ export async function loadServerHistory(serverId) {
         const response = await fetch(`/api/messages?server_id=${serverId}`);
         if (response.ok) {
             const messages = await response.json();
-            
+
             if (messages && messages.length > 0) {
                 messages.forEach(msg => appendMessage(msg));
                 // Petit scroll auto vers le bas après le chargement
@@ -144,5 +144,39 @@ export async function loadServerHistory(serverId) {
         }
     } catch (err) {
         console.error("Erreur lors du chargement de l'historique :", err);
+    }
+}
+export async function loadServerMembers(serverId) {
+    const userContainer = document.getElementById('userContainer');
+    if (!userContainer) return;
+
+    // 1. On vide et on met le titre
+    userContainer.innerHTML = '<div class="user-list-header">Membres</div>';
+
+    try {
+        // 2. On charge le template HTML (une seule fois)
+        const templateHtml = await loadComponent('/frontend/components/userContainer/userList.html');
+        const parser = new DOMParser();
+        
+        const response = await fetch(`/api/server-members?server_id=${serverId}`);
+        if (response.ok) {
+            const members = await response.json();
+            
+            // Tri : Online en haut
+            members.sort((a, b) => (a.status === 'online' ? -1 : 1));
+
+            members.forEach(member => {
+                const doc = parser.parseFromString(templateHtml, 'text/html');
+                const userItem = doc.querySelector('.user-item');
+                
+                userItem.id = `member-${member.id}`;
+                userItem.classList.add(member.status);
+                userItem.querySelector('.user-nickname').innerText = member.nickname;
+                
+                userContainer.appendChild(userItem);
+            });
+        }
+    } catch (err) {
+        console.error("Erreur chargement membres :", err);
     }
 }

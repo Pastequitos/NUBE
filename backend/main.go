@@ -14,7 +14,7 @@ import (
 // Middleware simple pour logger les requêtes dans le terminal
 func logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("🔔 %s %s\n", r.Method, r.URL.Path)
+		//fmt.Printf("🔔 %s %s\n", r.Method, r.URL.Path)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -56,10 +56,11 @@ func main() {
 	mux.HandleFunc("/api/servers", handlers.CreateServerHandler(db))
 	mux.HandleFunc("/api/my-servers", handlers.GetServersHandler(db))
 	mux.HandleFunc("/api/invites", handlers.CreateInviteHandler(db))
-	mux.HandleFunc("/api/join", handlers.JoinServerHandler(db))
+	mux.HandleFunc("/api/join", handlers.JoinServerHandler(db, hub))
 	mux.HandleFunc("/join/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./frontend/index.html")
 	})
+	mux.HandleFunc("/api/server-members", handlers.GetServerMembersHandler(db, hub))
 
 	// Route WebSocket (On passe le hub et la db)
 	mux.HandleFunc("/ws", handlers.ServeWs(hub, db))

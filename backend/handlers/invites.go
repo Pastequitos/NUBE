@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -28,7 +29,6 @@ func CreateInviteHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// 1. Vérification de la session
 		cookie, err := r.Cookie("session_token")
 		if err != nil {
 			http.Error(w, "Non autorisé", http.StatusUnauthorized)
@@ -42,17 +42,14 @@ func CreateInviteHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// 2. Lecture de la requête
 		var req InviteRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ServerID == "" {
 			http.Error(w, "Requête invalide", http.StatusBadRequest)
 			return
 		}
 
-		// 3. Génération du token (8 caractères)
 		token := uuid.New().String()[:8]
 
-		// 4. Enregistrement dans la base de données
 		query := `INSERT INTO invites (token, server_id, creator_id) VALUES (?, ?, ?)`
 		_, err = db.Exec(query, token, req.ServerID, userID)
 		if err != nil {
@@ -60,7 +57,6 @@ func CreateInviteHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// 5. Réponse
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]string{
@@ -69,14 +65,15 @@ func CreateInviteHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func JoinServerHandler(db *sql.DB) http.HandlerFunc {
+// JoinServerHandler permet de rejoindre un serveur et prévient le Hub pour le temps réel
+func JoinServerHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
-		// 1. Vérification session
+		// 1. Session & Utilisateur
 		cookie, err := r.Cookie("session_token")
 		if err != nil {
 			http.Error(w, "Non autorisé", http.StatusUnauthorized)
@@ -84,56 +81,87 @@ func JoinServerHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		var userID, nickname string
-		// On récupère l'ID ET le Nickname de celui qui veut rejoindre
 		err = db.QueryRow(`
-			SELECT u.id, u.nickname 
-			FROM users u 
-			JOIN sessions s ON u.id = s.user_id 
-			WHERE s.id = ?`, cookie.Value).Scan(&userID, &nickname)
+            SELECT u.id, u.nickname 
+            FROM users u 
+            JOIN sessions s ON u.id = s.user_id 
+            WHERE s.id = ?`, cookie.Value).Scan(&userID, &nickname)
 		if err != nil {
 			http.Error(w, "Session invalide", http.StatusUnauthorized)
 			return
 		}
 
-		// 2. Lecture du token
+		// 2. Token
 		var req JoinRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Token == "" {
+			http.Error(w, "Requête invalide", http.StatusBadRequest)
+			return
+		}
+
 		token := strings.TrimSpace(req.Token)
 		if strings.Contains(token, "/") {
 			parts := strings.Split(token, "/")
 			token = parts[len(parts)-1]
 		}
 
-		// 3. Trouver le serveur
-		var serverID string
-		err = db.QueryRow("SELECT server_id FROM invites WHERE token = ?", token).Scan(&serverID)
+		// 3. Infos Serveur
+		var serverID, serverName string
+		err = db.QueryRow(`
+            SELECT i.server_id, s.name 
+            FROM invites i 
+            JOIN servers s ON i.server_id = s.id 
+            WHERE i.token = ?`, token).Scan(&serverID, &serverName)
 		if err != nil {
-			http.Error(w, "Invitation invalide", http.StatusNotFound)
+			http.Error(w, "Invitation invalide ou expirée", http.StatusNotFound)
 			return
 		}
 
-		// 4. Ajouter le membre
+		// 4. Insertion Membre
 		_, err = db.Exec("INSERT OR IGNORE INTO server_members (server_id, user_id) VALUES (?, ?)", serverID, userID)
 		if err != nil {
 			http.Error(w, "Erreur lors de l'adhésion", http.StatusInternalServerError)
 			return
 		}
 
-		// --- NOUVEAU : LE MESSAGE DE BIENVENUE ---
+		// 5. Message de bienvenue (System)
 		welcomeContent := fmt.Sprintf("%s a rejoint le serveur, dites-lui bonjour !", nickname)
 		msgID := uuid.New().String()
+		now := time.Now() // On récupère l'heure précise
 
-		// On insère le message en tant que 'System' (sender_id '0') et type 'system'
 		_, err = db.Exec(`
-			INSERT INTO messages (id, server_id, sender_id, content, message_type) 
-			VALUES (?, ?, ?, ?, ?)`,
+            INSERT INTO messages (id, server_id, sender_id, content, message_type) 
+            VALUES (?, ?, ?, ?, ?)`,
 			msgID, serverID, "0", welcomeContent, "system")
 
-		if err != nil {
-			fmt.Println("Erreur message bienvenue:", err)
-		}
+		// 6. 🚀 LES DEUX NOTIFICATIONS WEB SOCKET 🚀
 
+		// A. Notification pour actualiser la liste des membres (à droite)
+		joinNotification, _ := json.Marshal(map[string]interface{}{
+			"type":      "member_join",
+			"server_id": serverID,
+			"user_id":   userID,
+			"nickname":  nickname,
+		})
+		hub.Broadcast <- joinNotification
+
+		// B. FIX : Notification pour afficher le message dans le chat (au centre)
+		chatNotification, _ := json.Marshal(map[string]string{
+			"type":         "public",
+			"sender":       "System", // Ou nickname si tu veux
+			"content":      welcomeContent,
+			"server_id":    serverID,
+			"message_type": "system",
+			"created_at":   now.Format(time.RFC3339),
+		})
+		hub.Broadcast <- chatNotification
+
+		// 7. Réponse HTTP finale
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"message": "Serveur rejoint !"})
+		json.NewEncoder(w).Encode(map[string]string{
+			"message":     "Succès",
+			"server_id":   serverID,
+			"server_name": serverName,
+		})
 	}
 }

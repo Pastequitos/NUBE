@@ -441,46 +441,75 @@ p {
     }
 }
 
-/* --- LE MENU CLIC DROIT --- */
-.context-menu {
+/* Container de l'avatar pour positionner le point par dessus */
+.avatar-container {
+    position: relative;
+    width: 32px;
+    height: 32px;
+}
+
+/* Le point de statut */
+.status-dot {
     position: absolute;
-    background-color: #111214;
-    border-radius: 4px;
-    padding: 6px 8px;
-    width: 200px;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
-    z-index: 1000;
+    bottom: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 3px solid #2b2d31; /* La couleur de fond du panel de droite */
+    background-color: #80848e; /* Gris par défaut (offline) */
+}
+
+/* Couleur verte si online */
+.user-item.online .status-dot {
+    background-color: #23a559;
+}
+
+/* Optionnel : mettre les pseudos hors ligne en un peu plus transparent */
+.user-item.offline .user-nickname {
+    color: #80848e;
+}
+
+.user-item.online .user-nickname {
+    color: #dbdee1;
+}
+
+#userContainer {
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 5px;
 }
-.context-menu .menu-item {
-    color: #B5BAC1;
-    padding: 8px 10px;
-    border-radius: 3px;
+
+.user-list-header {
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: bold;
+    color: #949ba4;
+    margin-bottom: 10px;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+}
+
+.user-item:hover {
+    background-color: #3f4147;
+}
+
+.user-avatar-small {
+    width: 32px;
+    height: 32px;
+    background-color: #5865f2;
+    border-radius: 50%;
+}
+
+.user-nickname {
+    color: #dbdee1;
     font-weight: 500;
-    transition: all 0.1s;
-}
-.context-menu .menu-item:hover {
-    background-color: #5865F2; /* Bleu Discord */
-    color: white;
-}
-.context-menu .menu-item.danger:hover {
-    background-color: #DA373C; /* Rouge danger */
-    color: white;
-}
-.context-menu .menu-item.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-.context-menu .menu-item.disabled:hover {
-    background-color: transparent;
-    color: #B5BAC1;
-}
-.context-menu .menu-separator {
-    height: 1px;
-    background-color: #1E1F22;
-    margin: 4px 0;
 }

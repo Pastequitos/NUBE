@@ -1,12 +1,8 @@
 import { state } from './state.js';
-import { loadComponent, appendMessage, loadServerHistory } from './utils.js';
+import { loadComponent, appendMessage, loadServerHistory, loadServerMembers } from './utils.js';
 import { connectWS } from './websocket.js';
 
 const app = document.getElementById('app');
-
-document.addEventListener('click', async (e) => {
-    console.log("🎯 Élément cliqué :", e.target, "| ID :", e.target.id, "| Classes :", e.target.className);
-});
 
 export function router(page) {
     switch (page) {
@@ -181,12 +177,7 @@ async function renderHome() {
 
                     // CLIC GAUCHE (Entrer dans le salon)
                     iconElement.addEventListener('click', () => {
-                        state.activeServerId = server.id;
-
-                        const header = document.getElementById('currentServerName');
-                        if (header) header.innerText = `💬 ${server.name}`;
-
-                        loadServerHistory(server.id);
+                        selectServer(server.id, server.name);
                     });
 
                     // CLIC DROIT (Ouvrir le menu)
@@ -311,8 +302,11 @@ async function renderHome() {
                     });
 
                     if (response.ok) {
+                        const newServer = await response.json();
                         closeModal();
                         await loadServers();
+
+                        selectServer(newServer.id, newServer.name);
                     }
                 } catch (err) {
                     console.error("Erreur création :", err);
@@ -337,8 +331,11 @@ async function renderHome() {
                     });
 
                     if (response.ok) {
+                        const data = await response.json();
                         closeModal();
                         await loadServers();
+
+                        selectServer(data.server_id, "Nouveau serveur rejoint");
                     } else {
                         alert("Invitation invalide ou déjà membre.");
                     }
@@ -459,3 +456,15 @@ const handleDirectLink = () => {
     }
 }
 handleDirectLink();
+
+async function selectServer(serverId, serverName) {
+    state.activeServerId = serverId;
+
+    const header = document.getElementById('currentServerName');
+    if (header) header.innerText = `💬 ${serverName}`;
+
+    await loadServerHistory(serverId);
+    await loadServerMembers(serverId);
+}
+
+window.selectServer = selectServer;

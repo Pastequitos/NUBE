@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"sync"
 )
 
@@ -39,11 +40,18 @@ func (h *Hub) Run() {
 			h.Clients[client] = true
 			h.mu.Unlock()
 
+			// 📢 Notifier tout le monde que cet utilisateur est en ligne
+			h.broadcastStatus(client.UserID, "online")
+
 		case client := <-h.Unregister:
 			h.mu.Lock()
 			if _, ok := h.Clients[client]; ok {
+				userID := client.UserID // On garde l'ID avant de supprimer
 				delete(h.Clients, client)
 				close(client.Send)
+
+				// 📢 Notifier tout le monde que cet utilisateur est hors-ligne
+				h.broadcastStatus(userID, "offline")
 			}
 			h.mu.Unlock()
 
@@ -60,4 +68,38 @@ func (h *Hub) Run() {
 			h.mu.Unlock()
 		}
 	}
+}
+
+// broadcastStatus prévient tous les clients connectés d'un changement de statut
+func (h *Hub) broadcastStatus(userID string, status string) {
+	msg, err := json.Marshal(map[string]string{
+		"type":    "user_status",
+		"user_id": userID,
+		"status":  status,
+	})
+
+	if err != nil {
+		return
+	}
+
+	// On ne verrouille pas ici car broadcastStatus est appelé
+	// depuis Run qui gère déjà ses propres flux de données sécurisés
+	for client := range h.Clients {
+		select {
+		case client.Send <- msg:
+		default:
+			// Si le canal est bloqué, on laisse tomber pour ce client
+		}
+	}
+}
+
+// GetOnlineUserIDs retourne une map des IDs actuellement connectés
+func (h *Hub) GetOnlineUserIDs() map[string]bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	onlineMap := make(map[string]bool)
+	for client := range h.Clients {
+		onlineMap[client.UserID] = true
+	}
+	return onlineMap
 }
