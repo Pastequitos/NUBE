@@ -440,3 +440,47 @@ p {
         }
     }
 }
+
+/* --- LE MENU CLIC DROIT --- */
+.context-menu {
+    position: absolute;
+    background-color: #111214;
+    border-radius: 4px;
+    padding: 6px 8px;
+    width: 200px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.context-menu .menu-item {
+    color: #B5BAC1;
+    padding: 8px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.1s;
+}
+.context-menu .menu-item:hover {
+    background-color: #5865F2; /* Bleu Discord */
+    color: white;
+}
+.context-menu .menu-item.danger:hover {
+    background-color: #DA373C; /* Rouge danger */
+    color: white;
+}
+.context-menu .menu-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.context-menu .menu-item.disabled:hover {
+    background-color: transparent;
+    color: #B5BAC1;
+}
+.context-menu .menu-separator {
+    height: 1px;
+    background-color: #1E1F22;
+    margin: 4px 0;
+}

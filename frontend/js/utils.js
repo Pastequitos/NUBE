@@ -43,14 +43,37 @@ export function appendMessage(msg) {
     const chatContainer = document.getElementById('chatContainer');
     if (!chatContainer) return;
 
+    // --- 1. GESTION DES MESSAGES SYSTÈME (Bienvenue, etc.) ---
+    if (msg.message_type === 'system') {
+        const systemElement = document.createElement('div');
+        systemElement.classList.add('message-item', 'system-join-message');
+        
+        // On utilise un format plus compact pour la bienvenue (style Discord)
+        systemElement.innerHTML = `
+            <div class="system-icon">✨</div>
+            <div class="message-body">
+                <span class="system-content">${msg.content}</span>
+                <span class="message-time">${formatTime(msg.created_at)}</span>
+            </div>
+        `;
+
+        chatContainer.appendChild(systemElement);
+        
+        // IMPORTANT : On réinitialise lastMessageInfo pour que le prochain message 
+        // d'utilisateur ne tente pas de se grouper avec un message système.
+        lastMessageInfo = { sender: null, date: null, bodyElement: null };
+        
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        return; // On s'arrête ici pour les messages système
+    }
+
+    // --- 2. GESTION DES MESSAGES UTILISATEURS (Ton code existant) ---
     if (chatContainer.children.length === 0) {
         lastMessageInfo = { sender: null, date: null, bodyElement: null };
     }
 
     const senderName = msg.sender ? msg.sender : 'Anonyme';
-
     const currentDate = msg.created_at ? new Date(msg.created_at) : new Date();
-
     const isSameSender = (lastMessageInfo.sender === senderName);
 
     let isWithin10Mins = false;
@@ -64,13 +87,10 @@ export function appendMessage(msg) {
         const newTextElement = document.createElement('div');
         newTextElement.classList.add('message-text');
         newTextElement.innerHTML = msg.content;
-
         newTextElement.style.marginTop = "4px";
 
         lastMessageInfo.bodyElement.appendChild(newTextElement);
-
         lastMessageInfo.date = currentDate;
-
     } else {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message-item');
@@ -100,4 +120,29 @@ export function appendMessage(msg) {
     }
 
     chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+export async function loadServerHistory(serverId) {
+    const chatContainer = document.getElementById('chatContainer');
+    if (!chatContainer) return;
+
+    // Nettoyage visuel immédiat
+    chatContainer.innerHTML = '';
+
+    try {
+        const response = await fetch(`/api/messages?server_id=${serverId}`);
+        if (response.ok) {
+            const messages = await response.json();
+            
+            if (messages && messages.length > 0) {
+                messages.forEach(msg => appendMessage(msg));
+                // Petit scroll auto vers le bas après le chargement
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            } else {
+                chatContainer.innerHTML = '<div class="chat-welcome">C\'est le début du serveur !</div>';
+            }
+        }
+    } catch (err) {
+        console.error("Erreur lors du chargement de l'historique :", err);
+    }
 }

@@ -1,4 +1,5 @@
 export const state = {
     currentUser: null,
-    socket: null
+    socket: null,
+    activeServerId: null
 };

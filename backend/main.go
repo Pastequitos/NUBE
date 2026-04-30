@@ -55,6 +55,11 @@ func main() {
 	mux.HandleFunc("/api/messages", handlers.GetMessagesHandler(db))
 	mux.HandleFunc("/api/servers", handlers.CreateServerHandler(db))
 	mux.HandleFunc("/api/my-servers", handlers.GetServersHandler(db))
+	mux.HandleFunc("/api/invites", handlers.CreateInviteHandler(db))
+	mux.HandleFunc("/api/join", handlers.JoinServerHandler(db))
+	mux.HandleFunc("/join/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./frontend/index.html")
+	})
 
 	// Route WebSocket (On passe le hub et la db)
 	mux.HandleFunc("/ws", handlers.ServeWs(hub, db))
