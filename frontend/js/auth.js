@@ -77,8 +77,10 @@ export async function renderLogin() {
                     body: JSON.stringify(data)
                 });
                 const result = await res.json();
+                console.log(result);
                 if (res.ok) {
                     state.currentUser = result.nickname;
+                    state.userId = String(result.id); 
                     router('home');
                 } else {
                     const msgEl = document.getElementById('loginMessage');
@@ -94,6 +96,7 @@ export async function handleLogout() {
         const response = await fetch('/api/logout', { method: 'POST' });
         if (response.ok) {
             state.currentUser = null;
+            state.userId = null;
             if (state.socket) state.socket.close();
             alert("Déconnexion !");
             router('login');
@@ -107,6 +110,7 @@ export async function checkAuth() {
         if (res.ok) {
             const data = await res.json();
             state.currentUser = data.nickname;
+            state.userId = String(data.id);
             router('home');
         } else {
             router('login');

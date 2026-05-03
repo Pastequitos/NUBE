@@ -94,14 +94,12 @@ func LoginHandler(db *sql.DB) http.HandlerFunc {
 		query := `SELECT id, nickname, password FROM users WHERE email = ? OR nickname = ?`
 		err := db.QueryRow(query, creds.Login, creds.Login).Scan(&user.ID, &user.Nickname, &user.Password)
 		if err != nil {
-			// Erreur : Utilisateur non trouvé
 			w.WriteHeader(http.StatusUnauthorized) // 401
 			json.NewEncoder(w).Encode(map[string]string{"message": "Email/Pseudo ou mot de passe incorrect"})
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(creds.Password)); err != nil {
-			// Erreur : Mot de passe faux
 			w.WriteHeader(http.StatusUnauthorized) // 401
 			json.NewEncoder(w).Encode(map[string]string{"message": "Email/Pseudo ou mot de passe incorrect"})
 			return
@@ -129,6 +127,7 @@ func LoginHandler(db *sql.DB) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]string{
 			"message":  "Connexion réussie",
 			"nickname": user.Nickname,
+			"id":       user.ID,
 		})
 	}
 }
@@ -137,11 +136,9 @@ func LogoutHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session_token")
 		if err == nil {
-			// Supprimer de la BDD
 			db.Exec("DELETE FROM sessions WHERE id = ?", cookie.Value)
 		}
 
-		// Expire le cookie côté navigateur
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_token",
 			Value:    "",
@@ -163,15 +160,20 @@ func MeHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		var nickname string
-		query := `SELECT u.nickname FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.id = ?`
+		var id, nickname string
 
-		err = db.QueryRow(query, cookie.Value).Scan(&nickname)
+		query := `SELECT u.id, u.nickname FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.id = ?`
+
+		err = db.QueryRow(query, cookie.Value).Scan(&id, &nickname)
 		if err != nil {
 			http.Error(w, "Session invalide ou expirée", http.StatusUnauthorized)
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]string{"nickname": nickname})
+		w.Header().Set("Content-Type", "application/json") // C'est toujours mieux de préciser le header
+		json.NewEncoder(w).Encode(map[string]string{
+			"id":       id,
+			"nickname": nickname,
+		})
 	}
 }
