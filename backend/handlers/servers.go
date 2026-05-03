@@ -139,16 +139,21 @@ func GetServersHandler(db *sql.DB) http.HandlerFunc {
 func GetServerMembersHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		serverID := r.URL.Query().Get("server_id")
+		if serverID == "" {
+			http.Error(w, "ID serveur manquant", http.StatusBadRequest)
+			return
+		}
 
 		// 1. Récupérer les IDs en ligne depuis le Hub
+		// (Assure-toi que cette méthode parcourt bien hub.Clients)
 		onlineUsers := hub.GetOnlineUserIDs()
 
 		// 2. Récupérer tous les membres du serveur en BDD
 		rows, err := db.Query(`
-			SELECT u.id, u.nickname 
-			FROM users u 
-			JOIN server_members sm ON u.id = sm.user_id 
-			WHERE sm.server_id = ?`, serverID)
+            SELECT u.id, u.nickname 
+            FROM users u 
+            JOIN server_members sm ON u.id = sm.user_id 
+            WHERE sm.server_id = ?`, serverID)
 		if err != nil {
 			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
 			return
@@ -158,9 +163,10 @@ func GetServerMembersHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 		var members []map[string]interface{}
 		for rows.Next() {
 			var id, nickname string
-			rows.Scan(&id, &nickname)
+			if err := rows.Scan(&id, &nickname); err != nil {
+				continue
+			}
 
-			// 3. On détermine le statut
 			status := "offline"
 			if onlineUsers[id] {
 				status = "online"

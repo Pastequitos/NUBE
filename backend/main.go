@@ -61,6 +61,11 @@ func main() {
 		http.ServeFile(w, r, "./frontend/index.html")
 	})
 	mux.HandleFunc("/api/server-members", handlers.GetServerMembersHandler(db, hub))
+	mux.HandleFunc("/api/users/search", handlers.SearchUsersHandler(db))
+	mux.HandleFunc("/api/friends/add", handlers.AddFriendHandler(db, hub))
+	mux.HandleFunc("/api/friends/list", handlers.GetFriendsHandler(db, hub))
+	mux.HandleFunc("/api/friends/accept", handlers.AcceptFriendHandler(db, hub))
+	mux.HandleFunc("/api/friends/decline", handlers.DeclineFriendHandler(db))
 
 	// Route WebSocket (On passe le hub et la db)
 	mux.HandleFunc("/ws", handlers.ServeWs(hub, db))

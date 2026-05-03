@@ -86,6 +86,17 @@ func InitDB() (*sql.DB, error) {
         FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE,
         FOREIGN KEY(creator_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS friends (
+    user_id1 TEXT NOT NULL,
+    user_id2 TEXT NOT NULL,
+    status TEXT DEFAULT 'pending', -- 'pending', 'accepted', 'blocked'
+    action_user_id TEXT NOT NULL,  -- Celui qui a envoyé la demande
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id1, user_id2),
+    FOREIGN KEY (user_id1) REFERENCES users(id),
+    FOREIGN KEY (user_id2) REFERENCES users(id)
+    );
     `
 
 	_, err = db.Exec(schema)
