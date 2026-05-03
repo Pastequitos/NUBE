@@ -173,7 +173,8 @@ export async function handleFriendAction(targetId, action) {
         });
 
         if (response.ok) {
-            await loadFriendsList();
         }
-    } catch (err) { console.error("Erreur action ami:", err); }
+    } catch (err) { 
+        console.error("Erreur action ami:", err); 
+    }
 }
