@@ -4,7 +4,9 @@
 
         <button id="openModalBtn" class="add-server-btn">+</button>
     </div>
-    <div id="contactContainer"></div>
+    <div id="contactContainer">
+        <div class="glassContainer"></div>
+    </div>
     <div id="userPanel">
         <span class="avatar">
             <img src="/frontend/css/test.png">
@@ -21,18 +23,21 @@
     </div>
 </section>
 <section id="rightContainer">
-    <div id="messageContainer">
-        <div id="chatHeader" style="padding: 15px 20px; border-bottom: 1px solid #1e1f22; background-color: #313338;">
-            <h3 id="currentServerName" style="margin: 0; color: white;">Sélectionnez un salon à gauche</h3>
-        </div>
-        <div id="chatContainer"></div>
-        <div id="inputContainer">
-            <input type="text" id="messageInput" placeholder="Votre message">
-            <button type="submit" id="sendMessage" class="send btn"></button>
+    <div class="glassContainer">
+        <div id="messageContainer">
+            <div id="chatHeader"
+                style="padding: 15px 20px; border-bottom: 1px solid #1e1f22; background-color: #313338;">
+                <h3 id="currentServerName" style="margin: 0; color: white;">Sélectionnez un salon à gauche</h3>
+            </div>
+            <div id="chatContainer"></div>
+            <div id="inputContainer">
+                <input type="text" id="messageInput" placeholder="Votre message">
+                <button type="submit" id="sendMessage" class="send btn"></button>
+            </div>
         </div>
     </div>
-    <div id="userContainer">
-    </div>
+        <div id="userContainer">
+        </div>
 </section>
 
 <div id="modalContainer" style="display: none;">

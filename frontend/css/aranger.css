@@ -1,0 +1,255 @@
+
+
+/* Container de l'avatar pour positionner le point par dessus */
+.avatar-container {
+    position: relative;
+    width: 32px;
+    height: 32px;
+}
+
+/* Le point de statut */
+.status-dot {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 3px solid #2b2d31; /* La couleur de fond du panel de droite */
+    background-color: #80848e; /* Gris par défaut (offline) */
+}
+
+/* Couleur verte si online */
+.user-item.online .status-dot {
+    background-color: #23a559;
+}
+
+/* Optionnel : mettre les pseudos hors ligne en un peu plus transparent */
+.user-item.offline .user-nickname {
+    color: #80848e;
+}
+
+.user-item.online .user-nickname {
+    color: #dbdee1;
+}
+
+#userContainer {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.user-list-header {
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: bold;
+    color: #949ba4;
+    margin-bottom: 10px;
+}
+
+.user-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.user-item:hover {
+    background-color: #3f4147;
+}
+
+.user-avatar-small {
+    width: 32px;
+    height: 32px;
+    background-color: #5865f2;
+    border-radius: 50%;
+}
+
+.user-nickname {
+    color: #dbdee1;
+    font-weight: 500;
+}
+
+
+
+
+
+
+
+
+
+#contactContainer {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--petitPadding);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.contact-item:hover {
+    background-color: #35373c;
+}
+
+.contact-item.active {
+    background-color: #3f4147;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.contact-nickname {
+    color: #949ba4;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.contact-item.online .contact-nickname {
+    color: #dbdee1;
+}
+
+.contact-status-text {
+    font-size: 11px;
+    color: #949ba4;
+}
+
+
+
+
+
+
+
+
+
+.profile-card {
+    background-color: #111214;
+    width: 300px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+}
+
+.profile-banner {
+    height: 60px;
+    background-color: #5865f2; /* Couleur par défaut */
+}
+
+.profile-header {
+    padding: 16px;
+    position: relative;
+    margin-top: -40px;
+}
+
+.profile-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: #2b2d31;
+    border: 6px solid #111214;
+    margin-bottom: 8px;
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+}
+
+.profile-info h2 {
+    color: white;
+    margin: 0;
+    font-size: 20px;
+}
+
+.profile-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid #2b2d31;
+}
+
+.primary-btn {
+    background-color: #5865f2;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.primary-btn:hover { background-color: #4752c4; }
+
+.secondary-btn {
+    background-color: #4e5058;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+
+.pending-section-title {
+    color: #949ba4;
+    text-transform: uppercase;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 15px 8px 8px 8px;
+}
+
+.pending-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+    background-color: rgba(35, 165, 89, 0.1); /* Léger vert pour les demandes */
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.pending-label {
+    font-size: 11px;
+    color: #23a559;
+}
+
+.pending-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.accept-btn, .decline-btn {
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.accept-btn { background-color: #23a559; }
+.decline-btn { background-color: #f23f43; }
+
+.accept-btn:hover { background-color: #1a7f47; }
+
+.contact-item.offline .status-dot { background-color: gray; }
+.contact-item.online .status-dot { background-color: #23a559; }

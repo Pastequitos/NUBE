@@ -15,7 +15,6 @@ export async function loadServerMembers(serverId) {
         if (response.ok) {
             const members = await response.json();
 
-            // Tri : Online en haut
             members.sort((a, b) => (a.status === 'online' ? -1 : 1));
 
             members.forEach(member => {
@@ -79,13 +78,14 @@ export async function openUserProfile(userId, nickname) {
 export async function loadFriendsList() {
     const contactContainer = document.getElementById('contactContainer');
     if (!contactContainer) return;
+    const container = contactContainer.querySelector('.glassContainer')
 
     try {
         const response = await fetch('/api/friends/list');
         if (!response.ok) throw new Error("Erreur lors du fetch des amis");
 
         const allRelations = await response.json();
-        contactContainer.innerHTML = '';
+        container.innerHTML = '';
 
         const pendingRequests = allRelations.filter(f => f.status === 'pending' && !f.is_requester);
 
@@ -93,7 +93,7 @@ export async function loadFriendsList() {
             const titlePending = document.createElement('div');
             titlePending.className = 'pending-section-title';
             titlePending.innerText = `Demandes en attente — ${pendingRequests.length}`;
-            contactContainer.appendChild(titlePending);
+            container.appendChild(titlePending);
 
             const pendingTemplate = await loadComponent('/frontend/components/contactContainer/pendingItem.html');
 
@@ -120,14 +120,14 @@ export async function loadFriendsList() {
                     };
                 }
 
-                contactContainer.appendChild(item);
+                container.appendChild(item);
             });
         }
 
         const titleAmis = document.createElement('div');
         titleAmis.className = 'pending-section-title';
         titleAmis.innerText = "Messages privés";
-        contactContainer.appendChild(titleAmis);
+        container.appendChild(titleAmis);
 
         const friends = allRelations.filter(f => f.status === 'accepted');
 
@@ -135,7 +135,7 @@ export async function loadFriendsList() {
             const emptyMsg = document.createElement('div');
             emptyMsg.className = 'contact-empty-state';
             emptyMsg.innerText = "Aucun ami pour le moment.";
-            contactContainer.appendChild(emptyMsg);
+            container.appendChild(emptyMsg);
         } else {
             const contactTemplate = await loadComponent('/frontend/components/contactContainer/contactItem.html');
 
@@ -155,7 +155,7 @@ export async function loadFriendsList() {
                     item.classList.remove('online');
                 }
 
-                contactContainer.appendChild(item);
+                container.appendChild(item);
             });
         }
 
