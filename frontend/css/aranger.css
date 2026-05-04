@@ -19,12 +19,10 @@
     background-color: #80848e; /* Gris par défaut (offline) */
 }
 
-/* Couleur verte si online */
 .user-item.online .status-dot {
     background-color: #23a559;
 }
 
-/* Optionnel : mettre les pseudos hors ligne en un peu plus transparent */
 .user-item.offline .user-nickname {
     color: #80848e;
 }
@@ -33,20 +31,7 @@
     color: #dbdee1;
 }
 
-#userContainer {
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
 
-.user-list-header {
-    text-transform: uppercase;
-    font-size: 12px;
-    font-weight: bold;
-    color: #949ba4;
-    margin-bottom: 10px;
-}
 
 .user-item {
     display: flex;
@@ -76,57 +61,6 @@
 
 
 
-
-
-
-
-
-#contactContainer {
-    flex: 1;
-    overflow-y: auto;
-    padding: var(--petitPadding);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.contact-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.contact-item:hover {
-    background-color: #35373c;
-}
-
-.contact-item.active {
-    background-color: #3f4147;
-}
-
-.contact-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.contact-nickname {
-    color: #949ba4;
-    font-weight: 500;
-    font-size: 14px;
-}
-
-.contact-item.online .contact-nickname {
-    color: #dbdee1;
-}
-
-.contact-status-text {
-    font-size: 11px;
-    color: #949ba4;
-}
 
 
 
@@ -206,13 +140,13 @@
 }
 
 
-.pending-section-title {
+/* .pending-section-title {
     color: #949ba4;
     text-transform: uppercase;
     font-size: 12px;
     font-weight: 700;
     margin: 15px 8px 8px 8px;
-}
+} */
 
 .pending-item {
     display: flex;

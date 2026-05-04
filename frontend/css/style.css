@@ -1,9 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap');
 
 :root {
-    --padding: 12px;
+    --padding: 16px;
     --leftContainerWidth: 350px;
-    --borderRadius: 12px;
+    --petitBorderRadius: 28px;
+    --borderRadius: 32px;
     --userContainer: 300px;
     --petitPadding: 6px;
     --cubic: cubic-bezier(.6, 0, .4, 1);
@@ -12,6 +13,7 @@
 
     --glass: rgba(62, 64, 69, 0.25);
     --glassBorder: rgba(255, 255, 255, 0.4);
+    --backdropIntensity: 4px;
 }
 
 body,
@@ -19,10 +21,16 @@ html {
     margin: 0;
     padding: 0;
     height: 100%;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #19161c;
+    background-color: #5c00b9;
     color: #dcddde;
     overflow: hidden;
+    font-family: var(--font);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
     font-family: var(--font);
 }
 
@@ -33,16 +41,27 @@ p {
 #app {
     height: 100%;
     display: flex;
+    gap: var(--petitPadding);
+    padding: var(--petitPadding);
+    padding-left: 0px;
+    position: relative;
 }
 
 #leftContainer {
-    min-width: var(--leftContainerWidth);
-    display: flex;
-    position: relative;
+    display: grid;
+    grid-template-columns: 72px calc(var(--leftContainerWidth) - 72px);
+
+    grid-template-rows: 1fr auto;
+
+    grid-template-areas:
+        "rooms contacts"
+        "user user";
+
+    height: 100%;
 
     #roomContainer {
+        grid-area: rooms;
         min-width: 72px;
-        background-color: rgb(27, 23, 27);
         position: relative;
 
         #serverList {
@@ -122,6 +141,7 @@ p {
                 transition: all 0.2s var(--cubic);
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
                 white-space: nowrap;
+                z-index: 999;
             }
 
             .server-icon .server-tooltip::before {
@@ -165,27 +185,78 @@ p {
             position: relative;
             margin: auto;
 
-
         }
     }
 
 
     #contactContainer {
         width: 100%;
+        grid-area: contacts;
+
+        .glassContainer {
+            width: unset;
+        }
+
+        .contact-item {
+            margin: 0px var(--petitPadding);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            border-radius: var(--borderRadius);
+            cursor: pointer;
+            transition: background-color 0.2s;
+            background-color: var(--glass);
+            border: 1px solid var(--glassBorder);
+            backdrop-filter: blur(var(--backdropIntensity));
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .contact-item:hover {
+            background-color: #35373c;
+        }
+
+        .contact-item.active {
+            background-color: #3f4147;
+        }
+
+        .contact-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .contact-nickname {
+            color: #949ba4;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .contact-item.online .contact-nickname {
+            color: #dbdee1;
+        }
+
+        .contact-status-text {
+            font-size: 11px;
+            color: #949ba4;
+        }
+
     }
 
 
     #userPanel {
-        position: absolute;
-        bottom: 0;
-        width: calc(var(--leftContainerWidth) - 36px);
-        background-color: rgb(0, 0, 0);
+        grid-area: user;
+        width: calc(var(--leftContainerWidth) - (var(--petitPadding)));
         max-height: 56px;
         margin: 6px;
         padding: var(--padding);
         border-radius: var(--borderRadius);
         display: flex;
         align-items: center;
+        background-color: var(--glass);
+        border: 1px solid var(--glassBorder);
+        backdrop-filter: blur(var(--backdropIntensity));
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        margin-bottom: 0px;
 
         span.avatar {
             max-height: 42px;
@@ -243,30 +314,54 @@ p {
 #rightContainer {
     width: 100%;
     display: flex;
-    padding: var(--petitPadding);
+    gap: var(--petitPadding);
 
     .glassContainer {
 
+        #chatHeader {
+            padding: var(--padding);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: var(--petitBorderRadius);
+            margin: var(--petitPadding);
+            background-color: var(--glass);
+            border: 1px solid var(--glassBorder);
+            backdrop-filter: blur(var(--backdropIntensity));
+            margin-bottom: 0px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+
+
+            h3 {
+                font-weight: bold;
+                margin: 0px;
+            }
+        }
 
         #messageContainer {
             width: 100%;
-            background-color: rgb(50, 50, 50);
+            height: 100%;
             position: relative;
-            padding-bottom: 124px;
+            display: flex;
+            flex-direction: column;
 
             #chatContainer {
+                height: 100%;
                 max-height: 100%;
                 overflow-y: scroll;
             }
 
             #inputContainer {
-                position: absolute;
-                bottom: 0;
-                background-color: black;
-                border-radius: var(--borderRadius);
+                position: relative;
+                background-color: var(--glass);
+                border-radius: var(--petitBorderRadius);
                 margin: 6px;
-                width: calc(100% - 36px);
+                width: calc(100% - (var(--petitPadding) * 2));
                 padding: var(--padding);
+                border: 1px solid var(--glassBorder);
+                margin-top: 0px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+
 
                 #messageInput {
                     min-height: 42px;
@@ -293,6 +388,15 @@ p {
                     right: var(--padding);
                     bottom: var(--padding);
                     height: 42px;
+                    width: 42px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    border: 1px solid var(--glassBorder);
+                    background-color: var(--glass);
+
+                    &:hover {
+                        background-color: red;
+                    }
                 }
             }
         }
@@ -301,7 +405,6 @@ p {
 
     #userContainer {
         min-width: var(--userContainer);
-        background-color: rgb(36, 34, 39);
 
 
         #userCard {
@@ -431,7 +534,7 @@ p {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(var(--backdropIntensity));
         border: 1px solid var(--glassBorder);
         width: 100%;
         margin: var(--petitPadding);
@@ -457,4 +560,19 @@ p {
     border-radius: var(--borderRadius);
     height: 100%;
     width: 100%;
+    overflow: hidden;
+    backdrop-filter: blur(var(--backdropIntensity));
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+
+}
+
+.sectionTitle {
+    padding: var(--padding);
+    margin: 0px;
+    font-weight: 400;
+    font-family: var(--font);
+    color: white;
+    opacity: 0.7;
+    text-transform: uppercase;
+    font-size: 12px;
 }

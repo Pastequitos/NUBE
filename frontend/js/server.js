@@ -56,7 +56,7 @@ export const loadServers = async () => {
 export async function selectServer(serverId, serverName) {
     state.activeServerId = serverId;
     const header = document.getElementById('currentServerName');
-    if (header) header.innerText = `💬 ${serverName}`;
+    if (header) header.innerText = `${serverName}`;
     await loadServerHistory(serverId);
     await loadServerMembers(serverId);
 }

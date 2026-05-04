@@ -5,7 +5,10 @@ export async function loadServerMembers(serverId) {
     const userContainer = document.getElementById('userContainer');
     if (!userContainer) return;
 
-    userContainer.innerHTML = '<div class="user-list-header">Membres</div>';
+
+    const container = userContainer.querySelector('.glassContainer');
+    container.innerHTML = '';
+    container.innerHTML = '<div class="user-list-header sectionTitle">Membres</div>';
 
     try {
         const templateHtml = await loadComponent('/frontend/components/userContainer/userList.html');
@@ -30,7 +33,7 @@ export async function loadServerMembers(serverId) {
                 userItem.querySelector('.user-nickname').innerText = member.nickname;
                 userItem.onclick = () => openUserProfile(member.id, member.nickname);
 
-                userContainer.appendChild(userItem);
+                container.appendChild(userItem);
             });
         }
     } catch (err) {
@@ -91,7 +94,7 @@ export async function loadFriendsList() {
 
         if (pendingRequests.length > 0) {
             const titlePending = document.createElement('div');
-            titlePending.className = 'pending-section-title';
+            titlePending.className = 'pending-section-title sectionTitle';
             titlePending.innerText = `Demandes en attente — ${pendingRequests.length}`;
             container.appendChild(titlePending);
 
@@ -125,7 +128,7 @@ export async function loadFriendsList() {
         }
 
         const titleAmis = document.createElement('div');
-        titleAmis.className = 'pending-section-title';
+        titleAmis.className = 'pending-section-title sectionTitle';
         titleAmis.innerText = "Messages privés";
         container.appendChild(titleAmis);
 
@@ -174,7 +177,7 @@ export async function handleFriendAction(targetId, action) {
 
         if (response.ok) {
         }
-    } catch (err) { 
-        console.error("Erreur action ami:", err); 
+    } catch (err) {
+        console.error("Erreur action ami:", err);
     }
 }
