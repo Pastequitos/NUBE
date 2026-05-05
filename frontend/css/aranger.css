@@ -1,5 +1,3 @@
-
-
 /* Container de l'avatar pour positionner le point par dessus */
 .avatar-container {
     position: relative;
@@ -15,8 +13,10 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    border: 3px solid #2b2d31; /* La couleur de fond du panel de droite */
-    background-color: #80848e; /* Gris par défaut (offline) */
+    border: 3px solid #2b2d31;
+    /* La couleur de fond du panel de droite */
+    background-color: #80848e;
+    /* Gris par défaut (offline) */
 }
 
 .user-item.online .status-dot {
@@ -71,16 +71,24 @@
 
 
 .profile-card {
-    background-color: #111214;
     width: 300px;
-    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+
+    background-color: var(--glass);
+    border: 1px solid var(--glassBorder);
+    backdrop-filter: blur(var(--backdropIntensity));
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border-radius: var(--borderRadius);
+
+    animation: openModalContent 0.5s cubic-bezier(.1, 0, 0, 1) forwards;
+
+
 }
 
 .profile-banner {
     height: 60px;
-    background-color: #5865f2; /* Couleur par défaut */
+    background-color: #5865f2;
 }
 
 .profile-header {
@@ -96,6 +104,7 @@
     background-color: #2b2d31;
     border: 6px solid #111214;
     margin-bottom: 8px;
+
     img {
         width: 100%;
         height: 100%;
@@ -115,7 +124,16 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    border-top: 1px solid #2b2d31;
+    position: relative;
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 1px;
+        background: var(--separator);
+    }
 }
 
 .primary-btn {
@@ -128,7 +146,9 @@
     cursor: pointer;
 }
 
-.primary-btn:hover { background-color: #4752c4; }
+.primary-btn:hover {
+    background-color: #4752c4;
+}
 
 .secondary-btn {
     background-color: #4e5058;
@@ -153,7 +173,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px;
-    background-color: rgba(35, 165, 89, 0.1); /* Léger vert pour les demandes */
+    background-color: rgba(35, 165, 89, 0.1);
+    /* Léger vert pour les demandes */
     border-radius: 4px;
     margin-bottom: 4px;
 }
@@ -168,7 +189,8 @@
     gap: 5px;
 }
 
-.accept-btn, .decline-btn {
+.accept-btn,
+.decline-btn {
     border: none;
     border-radius: 50%;
     width: 24px;
@@ -180,10 +202,22 @@
     color: white;
 }
 
-.accept-btn { background-color: #23a559; }
-.decline-btn { background-color: #f23f43; }
+.accept-btn {
+    background-color: #23a559;
+}
 
-.accept-btn:hover { background-color: #1a7f47; }
+.decline-btn {
+    background-color: #f23f43;
+}
 
-.contact-item.offline .status-dot { background-color: gray; }
-.contact-item.online .status-dot { background-color: #23a559; }
+.accept-btn:hover {
+    background-color: #1a7f47;
+}
+
+.contact-item.offline .status-dot {
+    background-color: gray;
+}
+
+.contact-item.online .status-dot {
+    background-color: #23a559;
+}

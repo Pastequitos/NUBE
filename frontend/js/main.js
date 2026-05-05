@@ -6,6 +6,7 @@ import { setupModalListeners } from './modals.js';
 import { setupChatListeners } from './chat.js';
 import { router, checkAuth } from './auth.js';
 import { loadFriendsList } from './users.js';
+import { initCursorFollower } from './background.js';
 
 
 
@@ -38,6 +39,8 @@ async function initApp() {
     await loadFriendsList();
     setupChatListeners();
     setupModalListeners();
+    initCursorFollower();
 }
 
 checkAuth();
+

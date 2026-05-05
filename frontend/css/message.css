@@ -3,10 +3,19 @@
     gap: 15px;
     padding: 10px 15px;
     margin-bottom: 0px;
+    border-radius: var(--borderRadius);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin: var(--petitPadding);
+    border: 1px solid transparent;
+
 }
 
 .message-item:hover {
-    background-color: #32353b;
+    background-color: var(--glass);
+    /* backdrop-filter: blur(var(--backdropIntensity)); */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glassBorder);
 }
 
 .message-avatar {
