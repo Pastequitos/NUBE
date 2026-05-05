@@ -1,15 +1,20 @@
 <div class="modal-content invite-modal">
-    <h2 class="invite-title">Inviter des amis</h2>
-    <p class="invite-desc">
-        Partagez ce lien avec d'autres personnes pour qu'elles puissent rejoindre le salon <strong id="inviteServerName" class="invite-highlight"></strong>.
-    </p>
+    <div class="modalHeader">
 
-    <div class="invite-input-group">
-        <input type="text" id="inviteLinkInput" class="invite-input" readonly>
-        <button id="copyInviteBtn" class="invite-copy-btn">Copier</button>
+        <button id="closeInviteModalBtn" class="invite-close-btn"></button>
+        
+        <h2 class="invite-title">Inviter des amis</h2>
     </div>
+        <p class="invite-desc">
+            Partagez ce lien avec d'autres personnes pour qu'elles puissent rejoindre
+            <strong id="inviteServerName" class="invite-highlight"></strong>
+        </p>
 
-    <p class="invite-footer-text">Ton lien d'invitation est généré et prêt à être partagé !</p>
+        <div class="invite-input-group">
+            <input type="text" id="inviteLinkInput" class="invite-input" readonly>
+            <button id="copyInviteBtn" class="invite-copy-btn">Copier</button>
+        </div>
 
-    <button id="closeInviteModalBtn" class="invite-close-btn">Fermer</button>
+        <p class="invite-footer-text">Ton lien d'invitation est généré et prêt à être partagé !</p>
+
 </div>

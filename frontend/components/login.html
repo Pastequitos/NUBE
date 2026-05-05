@@ -1,12 +1,12 @@
 <div class="auth-container">
-    <div class="auth-box">
+    <div class="auth-box glassContainer">
         <h2>Connexion</h2>
         <form id="loginForm">
-            <input type="text" id="loginInput" placeholder="Email ou Pseudo" required><br>
-            <input type="password" id="passInput" placeholder="Mot de passe" required><br>
+            <input type="text" id="loginInput" placeholder="Email ou Pseudo" required>
+            <input type="password" id="passInput" placeholder="Mot de passe" required>
             <button type="submit" class="btn-discord">Se connecter</button>
         </form>
-        <p>Pas de compte ? <a href="#" onclick="router('register')">S'inscrire</a></p>
         <p id="loginMessage" style="color:red"></p>
     </div>
+    <a class="newAccount"href="#" onclick="router('register')">Pas de compte ? S'inscrire</a>
 </div>

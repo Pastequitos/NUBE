@@ -31,24 +31,43 @@ function setupContextMenuListeners() {
     listenersSetup = true;
 
     document.addEventListener('click', (e) => {
+        const serverMenu = document.getElementById('serverContextMenu');
+        const userMenu = document.getElementById('userContextMenu');
+        
         const inviteBtn = e.target.closest('#serverMenuInvite');
 
-        if (inviteBtn) {
+        // Si on clique sur le bouton "Inviter" du menu contextuel
+        if (inviteBtn && serverMenu) {
             e.preventDefault();
-            const serverMenu = document.getElementById('serverContextMenu');
-            const targetServerId = serverMenu ? serverMenu.dataset.serverId : null;
+            const targetServerId = serverMenu.dataset.serverId;
+            // 🌟 On récupère le nom du serveur stocké dans le dataset
+            const targetServerName = serverMenu.dataset.serverName || "ce serveur";
 
             if (targetServerId) {
-                openInviteModal(targetServerId);
+                // 🌟 On passe bien l'ID et le NOM à ta modale !
+                openInviteModal(targetServerId, targetServerName);
             }
 
-            if (serverMenu) serverMenu.style.display = 'none';
+            serverMenu.style.display = 'none';
             return;
         }
 
-        const serverMenu = document.getElementById('serverContextMenu');
-        const userMenu = document.getElementById('userContextMenu');
+        // Si on clique n'importe où ailleurs, on ferme les menus
         if (serverMenu) serverMenu.style.display = 'none';
         if (userMenu) userMenu.style.display = 'none';
     });
+}
+
+export function showServerContextMenu(e, serverId, serverName) {
+    e.preventDefault(); 
+
+    const serverMenu = document.getElementById('serverContextMenu');
+    if (!serverMenu) return;
+
+    serverMenu.style.display = 'block';
+    serverMenu.style.left = `${e.pageX}px`;
+    serverMenu.style.top = `${e.pageY}px`;
+
+    serverMenu.dataset.serverId = serverId;
+    serverMenu.dataset.serverName = serverName;
 }

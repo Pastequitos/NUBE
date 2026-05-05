@@ -8,9 +8,15 @@ import { router, checkAuth } from './auth.js';
 import { loadFriendsList } from './users.js';
 import { initCursorFollower } from './background.js';
 
-
-
 export const app = document.getElementById('app');
+
+async function initGlobalComponents() {
+    const globalDiv = document.createElement('div');
+    globalDiv.id = 'global-components';
+    document.body.appendChild(globalDiv);
+
+    globalDiv.innerHTML = await loadComponent('/frontend/components/notif.html');
+}
 
 export async function renderHome() {
     if (!state.currentUser) {
@@ -39,8 +45,8 @@ async function initApp() {
     await loadFriendsList();
     setupChatListeners();
     setupModalListeners();
-    initCursorFollower();
 }
 
+initGlobalComponents();
 checkAuth();
-
+initCursorFollower();

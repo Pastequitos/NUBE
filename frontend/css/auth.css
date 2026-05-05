@@ -1,0 +1,92 @@
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    color: white;
+
+    .auth-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--glass);
+        border: 1px solid var(--glassBorder);
+        backdrop-filter: blur(var(--backdropIntensity));
+        border-radius: var(--borderRadius);
+        padding: var(--padding);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        margin: var(--petitPadding);
+        gap: var(--petitPadding);
+        width: 400px;
+        height: min-content;
+
+        #loginForm, #regForm {
+            display: flex;
+            flex-direction: column;
+            gap: var(--petitPadding);
+
+            input {
+                min-height: 42px;
+                height: auto;
+                width: 100%;
+                padding-block: 0px;
+                border-width: 0px;
+                outline: none;
+                background-color: transparent;
+                color: #dcddde;
+                padding-inline: 0px;
+                border: 1px solid var(--glassBorder);
+                border-radius: var(--borderRadius);
+                padding: var(--padding);
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                backdrop-filter: blur(var(--backdropIntensity));
+            }
+        }
+
+        button {
+            background-color: var(--glass);
+            border: 1px solid var(--glassBorder);
+            border-radius: var(--borderRadius);
+            padding: var(--padding);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(var(--backdropIntensity));
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s var(--cubic);
+            margin-top: var(--padding);
+
+            &:hover {
+                background-color: white;
+                color: black;
+            }
+        }
+
+    }
+
+    .newAccount {
+        padding: var(--padding);
+        margin: 0px;
+        font-weight: 400;
+        font-family: var(--font);
+        color: white;
+        font-size: 12px;
+        background-color: var(--glass);
+        border: 1px solid var(--glassBorder);
+        border-radius: var(--borderRadius);
+        padding: var(--padding);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(var(--backdropIntensity));
+        cursor: pointer;
+        transition: all 0.2s var(--cubic);
+        text-decoration: none;
+
+        &:hover {
+            background-color: white;
+            color: black;
+
+        }
+    }
+}

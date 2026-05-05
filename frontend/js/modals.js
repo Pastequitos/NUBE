@@ -2,6 +2,8 @@
 import { loadComponent } from './utils.js';
 import { loadServers } from './server.js';
 
+import { notify } from './notifications.js';
+
 export function setupModalListeners() {
     const openBtn = document.getElementById('openModalBtn');
     const modal = document.getElementById('modalContainer');
@@ -47,11 +49,14 @@ export function setupModalListeners() {
 
                         if (res.ok) {
                             closeModal();
+                            notify.success(`Le serveur "${serverName}" a été créé avec success !`);
                             await loadServers();
                         } else {
-                            alert("Erreur lors de la création du salon.");
+                            notify.error("Erreur lors de la création du salon.");
                         }
-                    } catch (err) {}
+                    } catch (err) {
+                        notify.error("Impossible de joindre le serveur.");
+                    }
                 };
             }
 
@@ -60,7 +65,7 @@ export function setupModalListeners() {
                     e.preventDefault();
                     const token = joinInput.value.trim();
                     if (!token) {
-                        alert("Veuillez entrer un lien ou un code d'invitation.");
+                        notify.info("Veuillez entrer un lien ou un code d'invitation.");
                         return;
                     }
 
@@ -73,21 +78,23 @@ export function setupModalListeners() {
 
                         if (res.ok) {
                             const data = await res.json();
-                            alert(`✅ Vous avez rejoint le serveur : ${data.server_name}`);
+                            notify.success(`Vous avez rejoint ${data.server_name} avec success !`);
                             closeModal();
                             await loadServers();
                         } else {
                             const errText = await res.text();
-                            alert(`❌ Impossible de rejoindre : ${errText}`);
+                            notify.error(`Impossible de rejoindre : ${errText}`);
                         }
-                    } catch (err) {}
+                    } catch (err) {
+                        notify.error("Erreur de connexion.");
+                    }
                 };
             }
         };
     }
 }
 
-export async function openInviteModal(serverId) {
+export async function openInviteModal(serverId, serverName) { // 🌟 Ajout du paramètre serverName
     const modalContainer = document.getElementById('modalContainer');
     if (!modalContainer) return;
 
@@ -95,6 +102,11 @@ export async function openInviteModal(serverId) {
         const modalHTML = await loadComponent('/frontend/components/modalContainer/inviteServer.html');
         modalContainer.innerHTML = modalHTML;
         modalContainer.style.display = 'flex';
+
+        const serverNameEl = document.getElementById('inviteServerName');
+        if (serverNameEl) {
+            serverNameEl.innerText = serverName ? serverName : "ce serveur";
+        }
 
         const closeModal = () => {
             modalContainer.style.display = 'none';
@@ -122,6 +134,7 @@ export async function openInviteModal(serverId) {
                 inputLink.value = `${window.location.origin}/join/${data.token}`;
             } else {
                 inputLink.value = "Erreur de génération.";
+                notify.error("Impossible de générer un lien d'invitation.");
             }
         }
 
@@ -132,6 +145,9 @@ export async function openInviteModal(serverId) {
                 document.execCommand('copy');
                 copyBtn.innerText = 'Copié !';
                 copyBtn.style.backgroundColor = '#23a559';
+                
+                notify.success("Lien d'invitation copié dans le presse-papier !");
+
                 setTimeout(() => {
                     copyBtn.innerText = 'Copier';
                     copyBtn.style.backgroundColor = '';

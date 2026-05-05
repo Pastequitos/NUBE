@@ -8,14 +8,14 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 
 export function initCursorFollower() {
     const NEON_GLOW_SIZE = 0.005;
-    const NEON_CORE_SIZE = 0.001;
+    const NEON_CORE_SIZE = 0.0015;
     const BLOOM_STRENGTH = 6.0;
     const BLOOM_RADIUS = 1.0;
     const COLOR_IDLE = 0x5865F2; 
     const COLOR_FAST = 0xff0000; 
     const IDLE_SPEED = 0.002; 
     const POINTS_COUNT = 40;
-    const LERP_FACTOR = 0.2;
+    const LERP_FACTOR = 0.6;
     const CAMERA_Z = 10;
 
     const scene = new THREE.Scene();

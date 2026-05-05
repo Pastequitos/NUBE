@@ -3,6 +3,9 @@ import { state } from './state.js';
 import { loadComponent } from './utils.js';
 import { renderHome } from './main.js';
 
+// 🌟 1. ON IMPORTE LE NOUVEAU SYSTÈME ICI
+import { notify } from './notifications.js';
+
 export function router(page) {
     switch (page) {
         case 'home': renderHome(); break;
@@ -11,25 +14,14 @@ export function router(page) {
     }
 }
 
-// On expose ces fonctions globalement pour qu'elles marchent dans les "onclick" du HTML
 window.router = router;
 window.handleLogout = handleLogout;
 
-export function renderRegister() {
+export async function renderRegister() {
     const app = document.getElementById('app');
     if (!app) return;
 
-    app.innerHTML = `
-        <h1>Inscription</h1>
-        <form id="regForm">
-            <input type="text" id="nickname" placeholder="Pseudo" required><br>
-            <input type="email" id="email" placeholder="Email" required><br>
-            <input type="password" id="password" placeholder="Mot de passe" required><br>
-            <button type="submit">Créer mon compte</button>
-        </form>
-        <p id="regMessage" style="color:red"></p>
-        <button onclick="router('login')">Déjà un compte ? Connectez-vous</button>
-    `;
+    app.innerHTML = await loadComponent('/frontend/components/register.html');
 
     document.getElementById('regForm').onsubmit = async (e) => {
         e.preventDefault();
@@ -47,12 +39,16 @@ export function renderRegister() {
             });
             const result = await response.json();
             if (response.ok) {
-                alert("Compte créé !");
+                // 🌟 2. ON REMPLACE alert("Compte créé !") PAR ÇA :
+                notify.success("Compte créé avec succès !");
                 router('login');
             } else {
-                document.getElementById('regMessage').innerText = result.message || "Erreur";
+                // 🌟 3. ON AFFICHE L'ERREUR EN ROUGE
+                notify.error(result.message || "Erreur lors de l'inscription");
             }
-        } catch (err) {}
+        } catch (err) { 
+            notify.error("Impossible de joindre le serveur.");
+        }
     };
 }
 
@@ -61,7 +57,7 @@ export async function renderLogin() {
     if (!app) return;
 
     app.innerHTML = await loadComponent('/frontend/components/login.html');
-    
+
     const form = document.getElementById('loginForm');
     if (form) {
         form.onsubmit = async (e) => {
@@ -77,16 +73,21 @@ export async function renderLogin() {
                     body: JSON.stringify(data)
                 });
                 const result = await res.json();
-                console.log(result);
+                
                 if (res.ok) {
                     state.currentUser = result.nickname;
-                    state.userId = String(result.id); 
+                    state.userId = String(result.id);
+                    
+                    // 🌟 Petit bonus : un message de bienvenue
+                    notify.success(`Content de te revoir, ${result.nickname} !`);
                     router('home');
                 } else {
-                    const msgEl = document.getElementById('loginMessage');
-                    if (msgEl) msgEl.innerText = result.message || "Identifiants incorrects";
+                    // 🌟 ON REMPLACE L'ANCIEN MESSAGE TEXTE PAR LA NOTIF ERREUR
+                    notify.error(result.message || "Identifiants incorrects");
                 }
-            } catch (err) {}
+            } catch (err) { 
+                notify.error("Erreur de connexion au serveur.");
+            }
         };
     }
 }
@@ -98,10 +99,14 @@ export async function handleLogout() {
             state.currentUser = null;
             state.userId = null;
             if (state.socket) state.socket.close();
-            alert("Déconnexion !");
+            
+            // 🌟 ON REMPLACE alert("Déconnexion !") PAR ÇA :
+            notify.info("Tu as bien été déconnecté.");
             router('login');
         }
-    } catch (err) {}
+    } catch (err) { 
+        notify.error("Erreur lors de la déconnexion.");
+    }
 }
 
 export async function checkAuth() {
