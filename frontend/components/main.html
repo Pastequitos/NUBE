@@ -8,17 +8,23 @@
         <div class="glassContainer"></div>
     </div>
     <div id="userPanel">
-        <span class="avatar">
-            <img src="/frontend/css/test.png">
-            <span class="status"></span>
-        </span>
-        <div class="userContainer">
-            <span class="pseudo">PSEUDO</span>
-            <span class="status">en ligne</span>
+        <div id="userSection">
+
+            <span class="avatar">
+                <img id="currentUserAvatar" src="https://cdn.discordapp.com/embed/avatars/0.png">
+                <span class="status"></span>
+            </span>
+            <div class="userContainer">
+                <span class="pseudo" id="currentUserName">Chargement...</span>
+                <span class="status">en ligne</span>
+            </div>
+            <span class="settings" id="btnOpenSettings">
+                <img src="/frontend/css/setting.png">
+            </span>
         </div>
-        <span class="settings">
-            <img src="/frontend/css/setting.png">
-        </span>
+        <div id="settings"></div>
+    </div>
+
     </div>
 </section>
 <section id="rightContainer">

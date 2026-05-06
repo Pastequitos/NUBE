@@ -1,4 +1,6 @@
 // messages.js
+import { DEFAULT_AVATAR } from './utils.js';
+
 
 let lastMessageInfo = {
     sender: null,
@@ -28,11 +30,13 @@ export function formatTime(dateString) {
     }
 }
 
+// N'oublie pas d'importer l'avatar par défaut !
+
 export function appendMessage(msg) {
     const chatContainer = document.getElementById('chatContainer');
     if (!chatContainer) return;
 
-    // --- 1. GESTION DES MESSAGES SYSTÈME (Bienvenue, etc.) ---
+    // --- 1. GESTION DES MESSAGES SYSTÈME ---
     if (msg.message_type === 'system') {
         const systemElement = document.createElement('div');
         systemElement.classList.add('message-item', 'system-join-message');
@@ -49,7 +53,7 @@ export function appendMessage(msg) {
 
         lastMessageInfo = { sender: null, date: null, bodyElement: null };
         chatContainer.scrollTop = chatContainer.scrollHeight;
-        return; 
+        return;
     }
 
     // --- 2. GESTION DES MESSAGES UTILISATEURS ---
@@ -60,6 +64,10 @@ export function appendMessage(msg) {
     const senderName = msg.sender ? msg.sender : 'Anonyme';
     const currentDate = msg.created_at ? new Date(msg.created_at) : new Date();
     const isSameSender = (lastMessageInfo.sender === senderName);
+
+    // 🌟 On vérifie si l'avatar est fourni, sinon on met celui par défaut
+    const avatarSrc = msg.avatar && msg.avatar !== "" ? msg.avatar : DEFAULT_AVATAR;
+    const senderId = msg.sender_id || ""; // Important pour la synchro temps réel
 
     let isWithin10Mins = false;
     if (lastMessageInfo.date) {
@@ -83,7 +91,9 @@ export function appendMessage(msg) {
         const time = formatTime(msg.created_at);
 
         messageElement.innerHTML = `
-            <div class="message-avatar"></div>
+            <div class="message-avatar">
+                <img src="${avatarSrc}" data-user-id="${senderId}">
+            </div>
             <div class="message-body">
                 <div class="message-header">
                     <span class="message-sender">${senderName}</span>

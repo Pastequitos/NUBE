@@ -160,20 +160,22 @@ func MeHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		var id, nickname string
+		var id, nickname, avatar string
 
-		query := `SELECT u.id, u.nickname FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.id = ?`
+		query := `SELECT u.id, u.nickname, u.avatar FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.id = ?`
 
-		err = db.QueryRow(query, cookie.Value).Scan(&id, &nickname)
+		err = db.QueryRow(query, cookie.Value).Scan(&id, &nickname, &avatar)
 		if err != nil {
 			http.Error(w, "Session invalide ou expirée", http.StatusUnauthorized)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json") // C'est toujours mieux de préciser le header
+		w.Header().Set("Content-Type", "application/json")
+
 		json.NewEncoder(w).Encode(map[string]string{
 			"id":       id,
 			"nickname": nickname,
+			"avatar":   avatar,
 		})
 	}
 }

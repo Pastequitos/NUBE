@@ -1,8 +1,3 @@
-// utils.js
-
-/**
- * Charge le contenu HTML d'un fichier composant.
- */
 export async function loadComponent(path) {
     try {
         const response = await fetch(path);
@@ -12,4 +7,16 @@ export async function loadComponent(path) {
         console.error(err);
         return `<p style="color:red">Erreur de chargement du composant.</p>`;
     }
+}
+
+export const DEFAULT_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
+
+export function updateAllAvatarsInDOM(userId, newAvatarBase64) {
+    const avatarImages = document.querySelectorAll(`img[data-user-id="${userId}"]`);
+    
+    const imgSrc = newAvatarBase64 && newAvatarBase64 !== "" ? newAvatarBase64 : DEFAULT_AVATAR;
+    
+    avatarImages.forEach(img => {
+        img.src = imgSrc;
+    });
 }

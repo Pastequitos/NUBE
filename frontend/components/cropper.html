@@ -1,0 +1,98 @@
+<style>
+    .cropper-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        backdrop-filter: blur(5px);
+    }
+
+    .cropper-panel {
+        background: var(--glass, #202225);
+        border: 1px solid var(--glassBorder, #4f545c);
+        padding: 20px;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+    }
+
+    /* Le masque rond */
+    .cropper-mask {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        overflow: hidden;
+        position: relative;
+        background: #000;
+        cursor: grab;
+        box-shadow: 0 0 0 4px #5865F2;
+    }
+
+    .cropper-mask:active {
+        cursor: grabbing;
+    }
+
+    .cropper-mask img {
+        position: absolute;
+        /* Le point central de l'image sera géré par JS */
+        transform: translate(-50%, -50%);
+        pointer-events: none; /* Empêche l'image d'interférer avec le drag */
+        transform-origin: center;
+    }
+
+    .cropper-controls {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: white;
+    }
+
+    .cropper-controls input[type="range"] {
+        flex-grow: 1;
+        cursor: pointer;
+    }
+
+    .cropper-actions {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .cropper-btn {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .btn-cancel { background: #ed4245; color: white; }
+    .btn-validate { background: #5865F2; color: white; }
+</style>
+
+<div class="cropper-overlay" id="cropperOverlay">
+    <div class="cropper-panel">
+        <h3 style="color:white; margin:0;">Recadre ta photo</h3>
+        
+        <div class="cropper-mask" id="cropperMask">
+            <img id="cropperImg" src="" alt="A recadrer">
+        </div>
+        
+        <div class="cropper-controls">
+            <span>🔍</span>
+            <input type="range" id="cropperZoom" min="1" max="3" step="0.01" value="1">
+        </div>
+
+        <div class="cropper-actions">
+            <button class="cropper-btn btn-cancel" id="cropperCancel">Annuler</button>
+            <button class="cropper-btn btn-validate" id="cropperValidate">Valider</button>
+        </div>
+    </div>
+</div>

@@ -8,6 +8,7 @@
     --userContainer: 300px;
     --petitPadding: 6px;
     --cubic: cubic-bezier(.6, 0, .4, 1);
+    --quickCubic: cubic-bezier(0, .5, .25, 1);
 
     --font: 'Lexend', sans-serif;
 
@@ -33,6 +34,8 @@ html {
 *::after {
     box-sizing: border-box;
     font-family: var(--font);
+    margin: 0;
+    padding: 0;
 }
 
 p {
@@ -208,6 +211,9 @@ p {
 
         .glassContainer {
             width: unset;
+            display: flex;
+            flex-direction: column;
+            gap: var(--petitPadding);
         }
 
         .contact-item {
@@ -259,42 +265,46 @@ p {
     #userPanel {
         grid-area: user;
         width: calc(var(--leftContainerWidth) - (var(--petitPadding)));
-        /* max-height: 56px; */
-        height: 56px;
-        margin: 6px;
+        /*         height: 60px; */
+        height: auto;
+        margin: var(--petitPadding);
         padding: calc(var(--padding)/2);
         border-radius: var(--borderRadius);
-        display: flex;
-        align-items: center;
         background-color: var(--glass);
         border: 1px solid var(--glassBorder);
         backdrop-filter: blur(var(--backdropIntensity));
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         margin-bottom: 0px;
 
-        span.avatar {
-            max-height: 42px;
-            max-width: 42px;
-            display: inline-block;
-            position: relative;
-            margin-right: var(--padding);
+        #userSection {
+            display: flex;
+            align-items: center;
 
-            img {
-                overflow: hidden;
-                border-radius: 50%;
-                width: 100%;
-                height: 100%;
+            span.avatar {
+                max-height: 42px;
+                max-width: 42px;
+                display: inline-block;
+                position: relative;
+                margin-right: var(--padding);
+
+                img {
+                    overflow: hidden;
+                    border-radius: 50%;
+                    width: 100%;
+                    height: 100%;
+                }
+
+                .status {
+                    position: absolute;
+                    bottom: 0;
+                    right: 0;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 50%;
+                    background-color: green;
+                }
             }
 
-            .status {
-                position: absolute;
-                bottom: 0;
-                right: 0;
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-                background-color: green;
-            }
         }
 
         .userContainer {
@@ -328,7 +338,6 @@ p {
                 }
             }
         }
-
     }
 }
 
@@ -598,12 +607,91 @@ p {
             gap: var(--petitPadding);
             margin-bottom: var(--petitPadding);
         }
+
+        &.create-join-modal {
+            input {
+                margin-top: var(--petitPadding)
+            }
+
+            button {
+                padding: var(--padding);
+                border-radius: var(--petitBorderRadius);
+                backdrop-filter: blur(10px);
+                color: white;
+                cursor: pointer;
+                background-color: var(--glass);
+                border: 1px solid var(--glassBorder);
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                transition: all 0.2s var(--cubic);
+
+                &:hover {
+                    background-color: var(--glassHover);
+                }
+            }
+
+            .create-section {
+                padding: var(--padding);
+                display: flex;
+                flex-direction: column;
+                gap: var(--petitPadding);
+                width: 100%;
+            }
+
+            #createServerForm {
+                .input-inline-group {
+                    display: flex;
+                    gap: var(--petitPadding);
+                }
+            }
+
+            .join-section {
+                padding: var(--padding);
+                display: flex;
+                flex-direction: column;
+                gap: var(--petitPadding);
+                width: 100%;
+
+                .input-inline-group {
+                    display: flex;
+                    gap: var(--petitPadding);
+                }
+            }
+        }
+    }
+
+    .invite-input-group {
+        display: flex;
+        gap: var(--petitPadding);
+        width: 100%;
+
+        #copyInviteBtn {
+            padding: var(--padding);
+            border-radius: var(--petitBorderRadius);
+            backdrop-filter: blur(10px);
+            color: white;
+            cursor: pointer;
+            background-color: var(--glass);
+            border: 1px solid var(--glassBorder);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s var(--cubic);
+
+            white-space: nowrap;
+            width: 130px;
+
+            &:hover {
+                background-color: var(--glassHover);
+            }
+        }
     }
 }
 
 
 
-
+.separator {
+    width: 100%;
+    height: 1px;
+    background: var(--separator);
+}
 
 .glassContainer {
     background-color: var(--glass);

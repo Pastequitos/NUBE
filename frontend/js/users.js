@@ -1,10 +1,12 @@
 // users.js
-import { loadComponent } from './utils.js';
+import { state } from './state.js';
+import { loadComponent, DEFAULT_AVATAR} from './utils.js';
+
+let isLoadingFriends = false;
 
 export async function loadServerMembers(serverId) {
     const userContainer = document.getElementById('userContainer');
     if (!userContainer) return;
-
 
     const container = userContainer.querySelector('.glassContainer');
     container.innerHTML = '';
@@ -31,7 +33,15 @@ export async function loadServerMembers(serverId) {
                 userItem.classList.add(member.status);
 
                 userItem.querySelector('.user-nickname').innerText = member.nickname;
-                userItem.onclick = () => openUserProfile(member.id, member.nickname);
+
+                const avatarSrc = member.avatar && member.avatar !== "" ? member.avatar : DEFAULT_AVATAR;
+                const imgElement = userItem.querySelector('.user-avatar-small');
+                if (imgElement) {
+                    imgElement.src = avatarSrc;
+                    imgElement.setAttribute('data-user-id', member.id);
+                }
+
+                userItem.onclick = () => openUserProfile(member.id, member.nickname, avatarSrc);
 
                 container.appendChild(userItem);
             });
@@ -41,36 +51,125 @@ export async function loadServerMembers(serverId) {
     }
 }
 
-export async function openUserProfile(userId, nickname) {
+
+// frontend/js/users.js (partie openUserProfile)
+export async function openUserProfile(userId, nickname, avatarSrc) {
     const modalContainer = document.getElementById('modalContainer');
 
     const html = await loadComponent('/frontend/components/contexts/userProfile.html');
     modalContainer.innerHTML = html;
     modalContainer.style.display = 'flex';
 
+    // 1. Données de base immédiates (passées en arguments)
     document.getElementById('profileNickname').innerText = nickname;
 
-    const addBtn = document.getElementById('addFriendBtn');
-    addBtn.onclick = async () => {
-        try {
-            const response = await fetch('/api/friends/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ target_id: userId })
-            });
+    const profileAvatar = document.getElementById('profileAvatar');
+    if (profileAvatar) {
+        // Met la bonne photo de profil passée en argument ou celle par défaut
+        profileAvatar.src = avatarSrc || DEFAULT_AVATAR;
+        profileAvatar.setAttribute('data-user-id', userId);
+    }
 
+    // Ciblage des nouveaux éléments
+    const bioTextElement = document.getElementById('profileBioText');
+    const creationDateElement = document.getElementById('profileCreationDate');
+    const statusBadge = document.getElementById('profileStatusBadge');
+    const statusText = document.getElementById('profileStatusText');
+
+    // 2. 🌟 NOUVEAU : Fetch des données complètes (Bio, Date, Statut réel)
+    try {
+        const res = await fetch(`/api/user-profile?user_id=${userId}`);
+        if (res.ok) {
+            const data = await res.json();
+
+            console.log(data);
+
+            // -- Gestion de la Bio --
+            if (bioTextElement) {
+                bioTextElement.innerText = data.bio && data.bio.trim() !== ""
+                    ? data.bio
+                    : "Aucune biographie pour le moment.";
+            }
+
+            // -- Gestion de la Date de créatin --
+            if (creationDateElement && data.created_at) {
+                const date = new Date(data.created_at);
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                creationDateElement.innerText = date.toLocaleDateString('fr-FR', options);
+            }
+
+            if (statusBadge && statusText) {
+                if (data.is_online) {
+                    statusBadge.classList.remove('offline');
+                    statusBadge.classList.add('online');
+                    statusText.innerText = "En ligne";
+                    statusText.classList.remove('offline');
+                    statusText.classList.add('online');
+                } else {
+                    statusBadge.classList.remove('online');
+                    statusBadge.classList.add('offline');
+                    statusText.innerText = "Hors ligne";
+                    statusText.classList.remove('online');
+                    statusText.classList.add('offline');
+                }
+            }
+
+        } else {
+            if (bioTextElement) bioTextElement.innerText = "Erreur lors du chargement du profil.";
+            console.error("Erreur API lors du fetch profil");
+        }
+    } catch (e) {
+        if (bioTextElement) bioTextElement.innerText = "Erreur de connexion.";
+        console.error("Erreur de chargement profil:", e);
+    }
+
+    // 3. Gestion des boutons (Logique existante)
+    const addBtn = document.getElementById('addFriendBtn');
+
+    if (state.userId === String(userId)) {
+        addBtn.style.display = 'none';
+    } else {
+        addBtn.innerText = "Vérification...";
+        addBtn.disabled = true;
+
+        try {
+            const response = await fetch('/api/friends/list');
             if (response.ok) {
-                addBtn.innerText = "Demande envoyée !";
-                addBtn.disabled = true;
-                addBtn.style.backgroundColor = "#23a559";
-            } else {
-                alert("Erreur ou demande déjà existante");
+                const friends = await response.json();
+                const relation = friends.find(f => f.id === userId);
+
+                addBtn.disabled = false;
+
+                if (relation) {
+                    if (relation.status === 'accepted') {
+                        addBtn.innerText = "Supprimer l'ami";
+                        addBtn.className = "removeFriendBtn";
+                        addBtn.onclick = () => handleProfileFriendAction(userId, 'decline', addBtn);
+                    } else if (relation.status === 'pending') {
+                        if (relation.is_requester) {
+                            addBtn.innerText = "Demande en attente";
+                            addBtn.style.backgroundColor = "#80848e";
+                            addBtn.disabled = true;
+                        } else {
+                            addBtn.innerText = "Accepter la demande";
+                            addBtn.style.backgroundColor = "#23a559";
+                            addBtn.onclick = () => handleProfileFriendAction(userId, 'accept', addBtn);
+                        }
+                    }
+                } else {
+                    addBtn.innerText = "Ajouter en ami";
+                    addBtn.style.backgroundColor = "#5865F2";
+                    addBtn.onclick = () => handleProfileFriendAction(userId, 'add', addBtn);
+                }
             }
         } catch (err) {
-            console.error("Erreur ajout ami:", err);
+            console.error("Erreur check statut ami:", err);
+            addBtn.innerText = "Ajouter en ami";
+            addBtn.disabled = false;
         }
-    };
+    }
 
+    // Gestion fermeture modale
     modalContainer.onclick = (e) => {
         if (e.target === modalContainer || e.target.closest('.close-modal-btn')) {
             modalContainer.style.display = 'none';
@@ -78,16 +177,67 @@ export async function openUserProfile(userId, nickname) {
     };
 }
 
+// 🌟 Nouvelle fonction pour gérer les clics depuis le profil dynamiquement
+async function handleProfileFriendAction(targetId, action, btn) {
+    btn.innerText = "Chargement...";
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`/api/friends/${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target_id: targetId })
+        });
+
+        if (response.ok) {
+            // On recharge la liste d'amis derrière pour que l'interface reste synchronisée
+            loadFriendsList();
+
+            // On met à jour l'apparence du bouton selon l'action qu'on vient de faire
+            if (action === 'add') {
+                btn.innerText = "Demande en attente";
+                btn.style.backgroundColor = "#80848e";
+            } else if (action === 'accept') {
+                btn.innerText = "Supprimer l'ami";
+                btn.style.backgroundColor = "#da373c";
+                btn.onclick = () => handleProfileFriendAction(targetId, 'decline', btn);
+                btn.disabled = false;
+            } else if (action === 'decline') {
+                btn.innerText = "Ajouter en ami";
+                btn.style.backgroundColor = "#5865F2";
+                btn.onclick = () => handleProfileFriendAction(targetId, 'add', btn);
+                btn.disabled = false;
+            }
+        } else {
+            btn.innerText = "Erreur !";
+            btn.disabled = false;
+        }
+    } catch (err) {
+        console.error("Erreur action profil:", err);
+        btn.disabled = false;
+    }
+}
+
 export async function loadFriendsList() {
+    // 🌟 Sécurité anti-doublon
+    if (isLoadingFriends) return;
+    isLoadingFriends = true;
+
     const contactContainer = document.getElementById('contactContainer');
-    if (!contactContainer) return;
-    const container = contactContainer.querySelector('.glassContainer')
+    if (!contactContainer) {
+        isLoadingFriends = false;
+        return;
+    }
+
+    const container = contactContainer.querySelector('.glassContainer');
 
     try {
         const response = await fetch('/api/friends/list');
         if (!response.ok) throw new Error("Erreur lors du fetch des amis");
 
         const allRelations = await response.json();
+
+        // On vide proprement avant de remplir
         container.innerHTML = '';
 
         const pendingRequests = allRelations.filter(f => f.status === 'pending' && !f.is_requester);
@@ -106,6 +256,13 @@ export async function loadFriendsList() {
                 const item = tempDiv.firstElementChild;
 
                 item.querySelector('.contact-nickname').innerText = req.nickname;
+
+                const avatarSrc = req.avatar && req.avatar !== "" ? req.avatar : DEFAULT_AVATAR;
+                const imgElement = item.querySelector('.user-avatar-small');
+                if (imgElement) {
+                    imgElement.src = avatarSrc;
+                    imgElement.setAttribute('data-user-id', req.id);
+                }
 
                 const acceptBtn = item.querySelector('.accept-btn');
                 const declineBtn = item.querySelector('.decline-btn');
@@ -150,6 +307,15 @@ export async function loadFriendsList() {
                 item.dataset.id = friend.id;
                 item.querySelector('.contact-nickname').innerText = friend.nickname;
 
+                const avatarSrc = friend.avatar && friend.avatar !== "" ? friend.avatar : DEFAULT_AVATAR;
+                const imgElement = item.querySelector('.user-avatar-small');
+                if (imgElement) {
+                    imgElement.src = avatarSrc;
+                    imgElement.setAttribute('data-user-id', friend.id);
+                }
+
+                item.onclick = () => openUserProfile(friend.id, friend.nickname, avatarSrc);
+
                 if (friend.online === true) {
                     item.classList.add('online');
                     item.classList.remove('offline');
@@ -164,6 +330,9 @@ export async function loadFriendsList() {
 
     } catch (err) {
         console.error("❌ Erreur loadFriendsList:", err);
+    } finally {
+        // 🌟 On libère le verrou quoi qu'il arrive
+        isLoadingFriends = false;
     }
 }
 
@@ -175,9 +344,11 @@ export async function handleFriendAction(targetId, action) {
             body: JSON.stringify({ target_id: targetId })
         });
 
-        if (response.ok) {
+        if (!response.ok) {
+            console.error(`Erreur serveur lors de l'action: ${action}`);
         }
+
     } catch (err) {
-        console.error("Erreur action ami:", err);
+        console.error("Erreur réseau lors de l'action ami:", err);
     }
 }

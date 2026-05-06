@@ -1,0 +1,143 @@
+<style>
+    h2.settings-title {
+        color: white;
+        margin: 0px;
+    }
+
+    .settings-group {
+        margin-bottom: var(--padding);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .settings-group label {
+        font-weight: bold;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .avatar-preview-container {
+        display: flex;
+        align-items: center;
+        position: relative;
+        width: min-content;
+    }
+
+    .avatar-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        background-color: #36393f;
+        border: 2px solid #5865F2;
+    }
+
+    .settings-input,
+    .settings-textarea {
+        background-color: var(--glass);
+        border: 1px solid var(--glassBorder);
+        border-radius: var(--petitBorderRadius);
+        color: white;
+        padding: var(--padding);
+        overflow: visible;
+
+        &::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+
+    }
+
+    .settings-input:focus,
+    .settings-textarea:focus {
+        outline: none;
+        border-color: #5865F2;
+    }
+
+    .settings-save-btn {
+        background-color: var(--glass);
+        border: 1px solid var(--glassBorder);
+        border-radius: var(--petitBorderRadius);
+        color: white;
+        padding: var(--padding);
+        cursor: pointer;
+        transition: all 0.2s var(--cubic);
+        width: 100%;
+    }
+
+    .settings-save-btn:hover {
+        background-color: var(--glassHover);
+    }
+
+    .custom-file-upload {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 50%;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s var(--quickCubic);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        width: 33px;
+        height: 33px;
+        background-color: var(--glass);
+        border: 1px solid var(--glassBorder);
+        backdrop-filter: blur(var(--backdropIntensity));
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        position: absolute;
+        bottom: 0px;
+        right: 0px;
+        translate: 25% 25%;
+        z-index: 2;
+    }
+
+    .custom-file-upload:hover {
+        background-color: var(--glassHover);
+        transform: scale(1.2);
+    }
+
+    .settings-panel {
+        animation: open 0.3s var(--cubic) forwards;
+    }
+
+    @keyframes open {
+        0% {
+            padding-top: 0px;
+            height: 0px;
+        }
+
+        100% {
+            padding-top: var(--padding);
+            height: 346px;
+        }
+    }
+</style>
+
+<div class="settings-panel">
+    <div class="settings-group">
+        <label>Photo de profil</label>
+        <div class="avatar-preview-container">
+            <img id="settingsAvatarPreview" class="avatar-preview" src="https://cdn.discordapp.com/embed/avatars/0.png"
+                alt="Avatar">
+
+            <label for="settingsAvatarInput" class="custom-file-upload">
+                +
+            </label>
+
+            <input type="file" id="settingsAvatarInput" accept="image/png, image/jpeg, image/jpg, image/webp"
+                style="display: none;">
+        </div>
+    </div>
+
+    <div class="settings-group">
+        <label for="settingsBioInput">Biographie</label>
+        <textarea id="settingsBioInput" class="settings-textarea" rows="4" placeholder="Parle-nous un peu de toi..."
+            style="resize: none;" maxlength="200" spellcheck="false"></textarea>
+    </div>
+
+    <button id="saveSettingsBtn" class="settings-save-btn">Enregistrer</button>
+</div>

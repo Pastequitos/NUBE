@@ -46,7 +46,7 @@ export async function renderRegister() {
                 // 🌟 3. ON AFFICHE L'ERREUR EN ROUGE
                 notify.error(result.message || "Erreur lors de l'inscription");
             }
-        } catch (err) { 
+        } catch (err) {
             notify.error("Impossible de joindre le serveur.");
         }
     };
@@ -73,11 +73,11 @@ export async function renderLogin() {
                     body: JSON.stringify(data)
                 });
                 const result = await res.json();
-                
+
                 if (res.ok) {
                     state.currentUser = result.nickname;
                     state.userId = String(result.id);
-                    
+
                     // 🌟 Petit bonus : un message de bienvenue
                     notify.success(`Content de te revoir, ${result.nickname} !`);
                     router('home');
@@ -85,7 +85,7 @@ export async function renderLogin() {
                     // 🌟 ON REMPLACE L'ANCIEN MESSAGE TEXTE PAR LA NOTIF ERREUR
                     notify.error(result.message || "Identifiants incorrects");
                 }
-            } catch (err) { 
+            } catch (err) {
                 notify.error("Erreur de connexion au serveur.");
             }
         };
@@ -99,12 +99,12 @@ export async function handleLogout() {
             state.currentUser = null;
             state.userId = null;
             if (state.socket) state.socket.close();
-            
+
             // 🌟 ON REMPLACE alert("Déconnexion !") PAR ÇA :
             notify.info("Tu as bien été déconnecté.");
             router('login');
         }
-    } catch (err) { 
+    } catch (err) {
         notify.error("Erreur lors de la déconnexion.");
     }
 }
@@ -116,6 +116,12 @@ export async function checkAuth() {
             const data = await res.json();
             state.currentUser = data.nickname;
             state.userId = String(data.id);
+
+            state.userAvatar = data.avatar;
+
+            console.log(data);
+            console.log(state);
+
             router('home');
         } else {
             router('login');

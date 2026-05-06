@@ -62,44 +62,60 @@ func ServeWs(hub *Hub, db *sql.DB) http.HandlerFunc {
 }
 
 func (c *Client) ReadPump(hub *Hub) {
-	defer func() {
-		hub.Unregister <- c
-		c.Conn.Close()
-	}()
-	for {
-		_, message, err := c.Conn.ReadMessage()
-		if err != nil {
-			break
-		}
+    defer func() {
+        hub.Unregister <- c
+        c.Conn.Close()
+    }()
+    for {
+        _, message, err := c.Conn.ReadMessage()
+        if err != nil {
+            break
+        }
 
-		var msg Message
-		if err := json.Unmarshal(message, &msg); err == nil {
-			msg.CreatedAt = time.Now().Format(time.RFC3339)
-			msg.Sender = c.Nickname
+        var msg Message
+        if err := json.Unmarshal(message, &msg); err == nil {
+            msg.CreatedAt = time.Now().Format(time.RFC3339)
+            msg.Sender = c.Nickname
 
-			// Si le type n'est pas défini, c'est un message 'user'
-			if msg.MessageType == "" {
-				msg.MessageType = "user"
-			}
+            if msg.MessageType == "" {
+                msg.MessageType = "user"
+            }
 
-			// ID unique pour le message
-			msgID := uuid.New().String()
+            msgID := uuid.New().String()
 
-			// Insertion en BDD avec le message_type
-			_, err = c.DB.Exec(`
-				INSERT INTO messages (id, server_id, sender_id, content, message_type) 
-				VALUES (?, ?, ?, ?, ?)`,
-				msgID, msg.ServerID, c.UserID, msg.Content, msg.MessageType)
+            _, err = c.DB.Exec(`
+                INSERT INTO messages (id, server_id, sender_id, content, message_type) 
+                VALUES (?, ?, ?, ?, ?)`,
+                msgID, msg.ServerID, c.UserID, msg.Content, msg.MessageType)
 
-			if err != nil {
-				fmt.Println("❌ Erreur insertion BDD :", err)
-				continue
-			}
+            if err != nil {
+                fmt.Println("❌ Erreur insertion BDD :", err)
+                continue
+            }
 
-			newJSON, _ := json.Marshal(msg)
-			hub.Broadcast <- newJSON
-		}
-	}
+            var avatar sql.NullString
+            errAvatar := c.DB.QueryRow("SELECT avatar FROM users WHERE id = ?", c.UserID).Scan(&avatar)
+            
+            finalAvatar := ""
+            if errAvatar == nil && avatar.Valid {
+                finalAvatar = avatar.String
+            }
+
+            outgoingMsg := map[string]interface{}{
+                "type":         msg.Type,
+                "server_id":    msg.ServerID,
+                "sender_id":    c.UserID, 
+                "sender":       c.Nickname,
+                "content":      msg.Content,
+                "message_type": msg.MessageType,
+                "created_at":   msg.CreatedAt,
+                "avatar":       finalAvatar, 
+            }
+
+            newJSON, _ := json.Marshal(outgoingMsg)
+            hub.Broadcast <- newJSON
+        }
+    }
 }
 
 func (c *Client) WritePump() {

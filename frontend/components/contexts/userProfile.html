@@ -2,16 +2,34 @@
     <div class="profile-banner"></div>
     <div class="profile-header">
         <div class="avatar-wrapper">
+            <div id="profileStatusBadge" class="profile-status-badge offline"></div>
             <div class="profile-avatar-large">
-                <img src="/frontend/css/test.png" alt="Avatar">
+                <!-- ID pour l'image -->
+                <img id="profileAvatar" src="" data-user-id="" alt="Avatar">
             </div>
-            <div class="profile-status-badge"></div>
+            <!-- ID ajouté pour le badge de statut (pour changer la couleur en JS) -->
         </div>
         <div class="profile-info">
             <h2 id="profileNickname">Pseudo</h2>
-            <span id="profileStatusText">En ligne</span>
+            <!-- ID pour le texte du statut -->
+            <span id="profileStatusText" class="status-text offline">Hors ligne</span>
         </div>
     </div>
+    
+    <div class="profile-content">
+        <!-- Section Bio -->
+        <div class="profile-section">
+            <h3>Bio</h3>
+            <p id="profileBioText">Chargement...</p>
+        </div>
+        
+        <!-- Section Informations -->
+        <div class="profile-section">
+            <h3>Membre depuis le</h3>
+            <p id="profileCreationDate">...</p>
+        </div>
+    </div>
+
     <div class="profile-body">
         <button id="addFriendBtn" class="primary-btn">Ajouter en ami</button>
         <button id="dmBtn" class="secondary-btn">Message privé</button>

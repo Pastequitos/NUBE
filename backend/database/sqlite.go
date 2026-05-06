@@ -1,24 +1,24 @@
 package database
 
 import (
-	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
+    "database/sql"
+    _ "github.com/mattn/go-sqlite3"
 )
 
 func InitDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "./forum.db")
-	if err != nil {
-		return nil, err
-	}
+    db, err := sql.Open("sqlite3", "./forum.db")
+    if err != nil {
+        return nil, err
+    }
 
-	// 1. Activation des clés étrangères pour la suppression en cascade
-	_, err = db.Exec("PRAGMA foreign_keys = ON;")
-	if err != nil {
-		return nil, err
-	}
+    // 1. Activation des clés étrangères pour la suppression en cascade
+    _, err = db.Exec("PRAGMA foreign_keys = ON;")
+    if err != nil {
+        return nil, err
+    }
 
-	// 2. Création des tables
-	const schema = `
+    // 2. Création des tables
+    const schema = `
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         nickname TEXT UNIQUE NOT NULL,
@@ -28,6 +28,8 @@ func InitDB() (*sql.DB, error) {
         gender TEXT,
         first_name TEXT,
         last_name TEXT,
+        avatar TEXT DEFAULT '',
+        bio TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -43,6 +45,7 @@ func InitDB() (*sql.DB, error) {
         name TEXT NOT NULL,
         owner_id TEXT NOT NULL,
         color TEXT NOT NULL DEFAULT '#5865F2',
+        avatar TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -55,13 +58,12 @@ func InitDB() (*sql.DB, error) {
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- MISE À JOUR : Ajout de message_type
     CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
         server_id TEXT NOT NULL,
         sender_id TEXT NOT NULL,
         content TEXT NOT NULL,
-        message_type TEXT NOT NULL DEFAULT 'user', -- 'user' ou 'system'
+        message_type TEXT NOT NULL DEFAULT 'user',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(server_id) REFERENCES servers(id) ON DELETE CASCADE,
         FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
@@ -88,44 +90,44 @@ func InitDB() (*sql.DB, error) {
     );
 
     CREATE TABLE IF NOT EXISTS friends (
-    user_id1 TEXT NOT NULL,
-    user_id2 TEXT NOT NULL,
-    status TEXT DEFAULT 'pending', -- 'pending', 'accepted', 'blocked'
-    action_user_id TEXT NOT NULL,  -- Celui qui a envoyé la demande
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id1, user_id2),
-    FOREIGN KEY (user_id1) REFERENCES users(id),
-    FOREIGN KEY (user_id2) REFERENCES users(id)
+        user_id1 TEXT NOT NULL,
+        user_id2 TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        action_user_id TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id1, user_id2),
+        FOREIGN KEY (user_id1) REFERENCES users(id),
+        FOREIGN KEY (user_id2) REFERENCES users(id)
     );
     `
 
-	_, err = db.Exec(schema)
-	if err != nil {
-		return nil, err
-	}
+    _, err = db.Exec(schema)
+    if err != nil {
+        return nil, err
+    }
 
-	// 3. INJECTION DE DONNÉES PAR DÉFAUT
+    // 3. INJECTION DE DONNÉES PAR DÉFAUT
 
-	// Création du compte Système
-	_, err = db.Exec(`INSERT OR IGNORE INTO users (id, nickname, email, password) 
+    // Création du compte Système
+    _, err = db.Exec(`INSERT OR IGNORE INTO users (id, nickname, email, password) 
         VALUES ('0', 'System', 'system@forum.com', 'none');`)
-	if err != nil {
-		return nil, err
-	}
+    if err != nil {
+        return nil, err
+    }
 
-	// Création du Salon Général par défaut
-	_, err = db.Exec(`INSERT OR IGNORE INTO servers (id, name, owner_id, color) 
+    // Création du Salon Général par défaut
+    _, err = db.Exec(`INSERT OR IGNORE INTO servers (id, name, owner_id, color) 
         VALUES ('1', 'Salon Général', '0', '#5865F2');`)
-	if err != nil {
-		return nil, err
-	}
+    if err != nil {
+        return nil, err
+    }
 
-	// On s'assure que le compte Système est membre du Salon Général
-	_, err = db.Exec(`INSERT OR IGNORE INTO server_members (server_id, user_id) 
+    // On s'assure que le compte Système est membre du Salon Général
+    _, err = db.Exec(`INSERT OR IGNORE INTO server_members (server_id, user_id) 
         VALUES ('1', '0');`)
-	if err != nil {
-		return nil, err
-	}
+    if err != nil {
+        return nil, err
+    }
 
-	return db, nil
+    return db, nil
 }

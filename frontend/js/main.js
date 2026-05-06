@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { loadComponent } from './utils.js';
+import { DEFAULT_AVATAR, loadComponent } from './utils.js';
 import { connectWS } from './websocket.js';
 import { loadServers } from './server.js';
 import { setupModalListeners } from './modals.js';
@@ -7,6 +7,7 @@ import { setupChatListeners } from './chat.js';
 import { router, checkAuth } from './auth.js';
 import { loadFriendsList } from './users.js';
 import { initCursorFollower } from './background.js';
+import { openSettings } from './settings.js';
 
 export const app = document.getElementById('app');
 
@@ -31,8 +32,14 @@ export async function renderHome() {
         await loadFriendsList();
     }
 
-    const usernameDisplay = document.getElementById('current-username');
+    const usernameDisplay = document.getElementById('currentUserName');
     if (usernameDisplay) usernameDisplay.innerText = state.currentUser;
+
+    const userAvatarDisplay = document.getElementById('currentUserAvatar');
+    if (userAvatarDisplay) {
+        userAvatarDisplay.src = state.userAvatar && state.userAvatar !== "" ? state.userAvatar : DEFAULT_AVATAR;
+        userAvatarDisplay.setAttribute('data-user-id', state.userId);
+    }
 
     if (!state.socket || state.socket.readyState !== WebSocket.OPEN) connectWS();
 }
@@ -45,6 +52,13 @@ async function initApp() {
     await loadFriendsList();
     setupChatListeners();
     setupModalListeners();
+
+    const btnSettings = document.getElementById('btnOpenSettings');
+    if (btnSettings) {
+        btnSettings.addEventListener('click', () => {
+            openSettings();
+        });
+    }
 }
 
 initGlobalComponents();
