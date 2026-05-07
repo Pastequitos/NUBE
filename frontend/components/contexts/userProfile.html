@@ -1,36 +1,32 @@
-<div class="profile-card">
-    <div class="profile-banner"></div>
-    <div class="profile-header">
+<div class="profile-card" id="profileCardGlass" style="position: relative; z-index: 0; overflow: hidden;">
+    
+    <div class="profile-banner" style="position: relative; z-index: 1;"></div>
+    
+    <div class="profile-header" style="position: relative; z-index: 1;">
         <div class="avatar-wrapper">
             <div id="profileStatusBadge" class="profile-status-badge offline"></div>
             <div class="profile-avatar-large">
-                <!-- ID pour l'image -->
                 <img id="profileAvatar" src="" data-user-id="" alt="Avatar">
             </div>
-            <!-- ID ajouté pour le badge de statut (pour changer la couleur en JS) -->
         </div>
         <div class="profile-info">
             <h2 id="profileNickname">Pseudo</h2>
-            <!-- ID pour le texte du statut -->
             <span id="profileStatusText" class="status-text offline">Hors ligne</span>
         </div>
     </div>
     
-    <div class="profile-content">
-        <!-- Section Bio -->
+    <div class="profile-content" style="position: relative; z-index: 1;">
         <div class="profile-section">
             <h3>Bio</h3>
             <p id="profileBioText">Chargement...</p>
         </div>
-        
-        <!-- Section Informations -->
         <div class="profile-section">
             <h3>Membre depuis le</h3>
             <p id="profileCreationDate">...</p>
         </div>
     </div>
 
-    <div class="profile-body">
+    <div class="profile-body" style="position: relative; z-index: 1;">
         <button id="addFriendBtn" class="primary-btn">Ajouter en ami</button>
         <button id="dmBtn" class="secondary-btn">Message privé</button>
     </div>

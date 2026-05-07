@@ -9,6 +9,9 @@ import { loadFriendsList } from './users.js';
 import { initCursorFollower } from './background.js';
 import { openSettings } from './settings.js';
 
+// 🌟 Importation du nouveau moteur optimisé
+import { initLiquidGlassEngine, addLiquidGlassElement } from './liquidGlass.js';
+
 export const app = document.getElementById('app');
 
 async function initGlobalComponents() {
@@ -59,8 +62,43 @@ async function initApp() {
             openSettings();
         });
     }
+
+    const appBackgroundImage = "https://photos.peopleimages.com/picture/202404/3047549-bright-fluid-and-liquid-with-neon-for-wallpaper-or-abstract-texture-water-or-design-or-futuristic.-vivid-pattern-and-energy-or-matter-with-fractal-for-background-creative-or-art-with-technology-zoom_90.jpg";
+
+    if (appBackgroundImage) {
+        // 1. Initialise le moteur global une seule fois
+        initLiquidGlassEngine(appBackgroundImage);
+
+        // 2. On déclare les divs à transformer en verre, avec leurs paramètres propres
+
+        addLiquidGlassElement('chatGlassWrapper', {
+            radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
+        });
+
+        addLiquidGlassElement('userPanel', {
+            radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
+        });
+
+        addLiquidGlassElement('contactContainer', {
+            radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
+        });
+
+        addLiquidGlassElement('userContainer', {
+            radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
+        });
+
+        // L'input (on réduit un peu le rayon vu que c'est plus petit)
+        addLiquidGlassElement('messageInputWrapper', {
+            radius: 38.0, bezel: 12.0, thickness: 20.0, ior: 2.0, brightness: 0.6, interactive: true
+        });
+
+        // Le bouton send
+        addLiquidGlassElement('sendBtnWrapper', {
+            radius: 38.0, bezel: 8.0, thickness: 15.0, ior: 1.5, brightness: 0.8, interactive: true
+        });
+    }
 }
 
 initGlobalComponents();
 checkAuth();
-initCursorFollower();
+/* initCursorFollower(); */

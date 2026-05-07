@@ -4,17 +4,17 @@
     --padding: 16px;
     --leftContainerWidth: 350px;
     --petitBorderRadius: 28px;
-    --borderRadius: 32px;
+    --borderRadius: 42px;
     --userContainer: 300px;
     --petitPadding: 6px;
-    --cubic: cubic-bezier(.6, 0, .4, 1);
+    --cubic: cubic-bezier(.8, 0, .2, 1);
     --quickCubic: cubic-bezier(0, .5, .25, 1);
 
     --font: 'Lexend', sans-serif;
 
     --glass: rgba(255, 255, 255, 0.1);
     --glassBorder: rgba(255, 255, 255, 0.1);
-    --backdropIntensity: 6px;
+    --backdropIntensity: 0px;
 
     --separator: linear-gradient(to right, transparent, rgba(123, 123, 123, 0.5), transparent);
 }
@@ -27,6 +27,10 @@ html {
     color: #dcddde;
     overflow: hidden;
     font-family: var(--font);
+    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("https://photos.peopleimages.com/picture/202404/3047549-bright-fluid-and-liquid-with-neon-for-wallpaper-or-abstract-texture-water-or-design-or-futuristic.-vivid-pattern-and-energy-or-matter-with-fractal-for-background-creative-or-art-with-technology-zoom_90.jpg");
+    background-size: cover;
+    background-attachment: fixed;
+    background-position: center;
 }
 
 *,
@@ -49,6 +53,7 @@ p {
     padding: var(--petitPadding);
     padding-left: 0px;
     position: relative;
+    z-index: 1;
 
 }
 
@@ -155,7 +160,7 @@ p {
                 opacity: 0;
                 pointer-events: none;
                 transition: all 0.2s var(--cubic);
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 white-space: nowrap;
                 z-index: 999;
             }
@@ -217,18 +222,17 @@ p {
         }
 
         .contact-item {
-            margin: 0px var(--petitPadding);
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 8px;
+            padding: var(--petitPadding);
             border-radius: var(--borderRadius);
             cursor: pointer;
             transition: background-color 0.2s;
             background-color: var(--glass);
             border: 1px solid var(--glassBorder);
             backdrop-filter: blur(var(--backdropIntensity));
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .contact-item:hover {
@@ -265,24 +269,23 @@ p {
     #userPanel {
         grid-area: user;
         width: calc(var(--leftContainerWidth) - (var(--petitPadding)));
-        /*         height: 60px; */
         height: auto;
         margin: var(--petitPadding);
-        padding: calc(var(--padding)/2);
-        border-radius: var(--borderRadius);
-        background-color: var(--glass);
-        border: 1px solid var(--glassBorder);
-        backdrop-filter: blur(var(--backdropIntensity));
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        margin-bottom: 0px;
+        margin-bottom: 0;
+
+        .glassContainer {
+            padding: unset;
+        }
+
 
         #userSection {
             display: flex;
             align-items: center;
+            padding: var(--padding);
 
             span.avatar {
-                max-height: 42px;
-                max-width: 42px;
+                max-height: 52px;
+                max-width: 52px;
                 display: inline-block;
                 position: relative;
                 margin-right: var(--padding);
@@ -298,10 +301,12 @@ p {
                     position: absolute;
                     bottom: 0;
                     right: 0;
-                    width: 10px;
-                    height: 10px;
+                    width: 14px;
+                    height: 14px;
                     border-radius: 50%;
-                    background-color: green;
+                    background-color: rgba(35, 165, 89, 0.8);
+                    border: 1px solid rgba(154, 204, 175, 0.3);
+                    backdrop-filter: blur(13px);
                 }
             }
 
@@ -310,6 +315,7 @@ p {
         .userContainer {
             display: flex;
             flex-direction: column;
+
 
             span.pseudo {
                 font-weight: bold;
@@ -321,6 +327,7 @@ p {
         }
 
         .settings {
+            margin: 10px;
             margin-left: auto;
             cursor: pointer;
             width: 36px;
@@ -338,6 +345,152 @@ p {
                 }
             }
         }
+
+        h2.settings-title {
+            color: white;
+            margin: 0px;
+        }
+
+        .settings-group {
+            margin-bottom: var(--padding);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .settings-group label {
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .avatar-preview-container {
+            display: flex;
+            align-items: center;
+            position: relative;
+            width: min-content;
+        }
+
+        .avatar-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            background-color: #36393f;
+            border: 2px solid #5865F2;
+        }
+
+        .settings-input,
+        .settings-textarea {
+            background-color: var(--glass);
+            border: 1px solid var(--glassBorder);
+            border-radius: var(--petitBorderRadius);
+            color: white;
+            padding: var(--padding);
+            overflow: visible;
+
+            &::-webkit-scrollbar {
+                width: 0px;
+                background: transparent;
+            }
+
+        }
+
+        .settings-input:focus,
+        .settings-textarea:focus {
+            outline: none;
+            border-color: #5865F2;
+        }
+
+        .settings-save-btn {
+            background-color: var(--glass);
+            border: 1px solid var(--glassBorder);
+            border-radius: var(--petitBorderRadius);
+            color: white;
+            padding: var(--padding);
+            cursor: pointer;
+            transition: all 0.2s var(--cubic);
+            width: 100%;
+        }
+
+        .settings-save-btn:hover {
+            background-color: var(--glassHover);
+        }
+
+        .custom-file-upload {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s var(--quickCubic);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            width: 33px;
+            height: 33px;
+            background-color: var(--glass);
+            border: 1px solid var(--glassBorder);
+            backdrop-filter: blur(var(--backdropIntensity));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            position: absolute;
+            bottom: 0px;
+            right: 0px;
+            translate: 25% 25%;
+            z-index: 2;
+        }
+
+        .custom-file-upload:hover {
+            background-color: var(--glassHover);
+            transform: scale(1.2);
+        }
+
+        .settings-panel {
+            animation: openSettings 0.5s var(--cubic) forwards;
+            padding: var(--padding);
+            padding-top: 0px;
+            padding-bottom: 0px;
+        }
+
+        #settings {
+            overflow: hidden;
+
+            &.close {
+                .settings-panel {
+                    animation: closeSettings 0.3s var(--cubic) forwards;
+                }
+            }
+        }
+
+
+    }
+}
+
+@keyframes openSettings {
+    0% {
+        padding-top: 0px;
+        height: 0px;
+    }
+
+    100% {
+        height: 348px;
+        padding-bottom: var(--padding);
+        padding-top: var(--padding);
+    }
+}
+
+@keyframes closeSettings {
+    0% {
+        padding-top: var(--padding);
+        height: 348px;
+    }
+
+    100% {
+        height: 0px;
+        padding-top: 0px;
+        padding-bottom: 0px;
     }
 }
 
@@ -345,6 +498,10 @@ p {
     width: 100%;
     display: flex;
     gap: var(--petitPadding);
+
+    #chatGlassWrapper {
+        padding: unset;
+    }
 
     .glassContainer {
 
@@ -354,12 +511,11 @@ p {
             align-items: center;
             justify-content: space-between;
             border-radius: var(--petitBorderRadius);
-            margin: var(--petitPadding);
             background-color: var(--glass);
             border: 1px solid var(--glassBorder);
             backdrop-filter: blur(var(--backdropIntensity));
             margin-bottom: 0px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 
 
             h3 {
@@ -367,6 +523,8 @@ p {
                 margin: 0px;
             }
         }
+
+
 
         #messageContainer {
             width: 100%;
@@ -380,8 +538,6 @@ p {
                 height: 100%;
                 max-height: 100%;
                 overflow-y: scroll;
-                margin-right: var(--petitPadding);
-
             }
 
             #chatContainer::-webkit-scrollbar {
@@ -396,50 +552,54 @@ p {
 
             #inputContainer {
                 position: relative;
-                background-color: var(--glass);
-                border-radius: var(--petitBorderRadius);
-                margin: 6px;
-                width: calc(100% - (var(--petitPadding) * 2));
-                padding: var(--padding);
-                border: 1px solid var(--glassBorder);
-                margin-top: 0px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                display: flex;
+                gap: var(--padding);
 
 
-                #messageInput {
-                    min-height: 42px;
-                    height: auto;
-                    width: 100%;
-                    padding-block: 0px;
-                    border-width: 0px;
-                    outline: none;
-                    background-color: transparent;
-                    color: #dcddde;
-                    padding-inline: 0px;
-
-                    input {
-                        border: none;
-                        padding: none;
-                        width: 100%;
-                        height: 100%;
-                        font-size: 16px;
-                    }
+                #messageInputWrapper {
+                    width: calc(100% - (var(--padding) * 2));
+                    margin-top: 0px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    border: 1px solid var(--glassBorder);
+                    padding: unset;
                 }
 
-                #sendMessage {
-                    position: absolute;
-                    right: var(--padding);
-                    bottom: var(--padding);
-                    height: 42px;
-                    width: 42px;
-                    border-radius: 50%;
-                    cursor: pointer;
-                    border: 1px solid var(--glassBorder);
-                    background-color: var(--glass);
-                    transition: all 0.2s var(--cubic);
+                #messageInput {
+                    position: relative;
+                    z-index: 1;
+                    background-color: transparent !important;
+                    border: none;
+                    outline: none;
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 24px;
+                    color: white;
+                    font-size: 14px;
+                    font-family: inherit;
+                    field-sizing: content;
+                    resize: none;
+                    min-height: 66px;
+                    max-height: 150px;
+                    overflow-y: auto;
+                }
 
-                    &:hover {
-                        background-color: white;
+
+                #sendBtnWrapper {
+                    height: 72px;
+                    width: 80px;
+
+                    #sendMessage {
+                        width: 100%;
+                        height: 100%;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        border: 1px solid var(--glassBorder);
+                        background-color: var(--glass);
+                        transition: all 0.2s var(--cubic);
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                     }
                 }
             }
@@ -450,9 +610,28 @@ p {
     #userContainer {
         min-width: var(--userContainer);
 
+        .glassContainer {
+            display: flex;
+            flex-direction: column;
+            gap: var(--petitPadding);
+
+            .user-item {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: var(--petitPadding);
+                border-radius: var(--borderRadius);
+                cursor: pointer;
+                transition: background-color 0.2s;
+                background-color: var(--glass);
+                border: 1px solid var(--glassBorder);
+                backdrop-filter: blur(var(--backdropIntensity));
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+        }
 
         #userCard {
-
             .topContainer {
                 display: flex;
 
@@ -550,7 +729,7 @@ p {
 
 @keyframes openModalContent {
     from {
-        transform: translateY(100%);
+        transform: translateY(100vh);
     }
 
     to {
@@ -564,9 +743,9 @@ p {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: rgba(0, 0, 0, 0.1);
     z-index: 1000;
-    animation: openModal 0.5s cubic-bezier(.6, 0, .4, 1) forwards;
+    animation: openModal .5s var(--cubic) forwards;
 
     align-items: center;
     justify-content: center;
@@ -584,7 +763,7 @@ p {
         backdrop-filter: blur(var(--backdropIntensity));
         border: 1px solid var(--glassBorder);
         margin: var(--petitPadding);
-        animation: openModalContent 0.5s cubic-bezier(.1, 0, 0, 1) forwards;
+        animation: openModalContent 1s .5s cubic-bezier(.1, 0, 0, 1) forwards;
 
         input {
             border: none;
@@ -596,7 +775,7 @@ p {
             border-radius: var(--borderRadius);
             backdrop-filter: blur(var(--backdropIntensity));
             border: 1px solid var(--glassBorder);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             color: white;
         }
 
@@ -621,7 +800,7 @@ p {
                 cursor: pointer;
                 background-color: var(--glass);
                 border: 1px solid var(--glassBorder);
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 transition: all 0.2s var(--cubic);
 
                 &:hover {
@@ -672,7 +851,7 @@ p {
             cursor: pointer;
             background-color: var(--glass);
             border: 1px solid var(--glassBorder);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: all 0.2s var(--cubic);
 
             white-space: nowrap;
@@ -701,7 +880,8 @@ p {
     width: 100%;
     overflow: hidden;
     backdrop-filter: blur(var(--backdropIntensity));
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: var(--padding);
 }
 
 .sectionTitle {
@@ -719,12 +899,8 @@ canvas {
     height: 100vh;
     width: 100vw;
     position: fixed;
-    background: rgb(8, 8, 8);
     z-index: -1;
     top: 0;
-
-
-
 }
 
 
@@ -753,7 +929,7 @@ canvas {
     border-radius: var(--borderRadius);
     border: 1px solid var(--glassBorder);
     backdrop-filter: blur(var(--backdropIntensity));
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -860,7 +1036,7 @@ canvas {
             border-radius: var(--borderRadius);
             border: 1px solid var(--glassBorder);
             backdrop-filter: blur(var(--backdropIntensity));
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             padding: var(--petitPadding);
             width: 46px;
             height: 46px;
@@ -903,4 +1079,9 @@ canvas {
         color: white;
         opacity: 0.7;
     }
+}
+
+*::placeholder {
+    color: white;
+    opacity: 0.7;
 }

@@ -1,6 +1,7 @@
 // users.js
+import { addLiquidGlassElement } from './liquidGlass.js';
 import { state } from './state.js';
-import { loadComponent, DEFAULT_AVATAR} from './utils.js';
+import { loadComponent, DEFAULT_AVATAR } from './utils.js';
 
 let isLoadingFriends = false;
 
@@ -9,6 +10,12 @@ export async function loadServerMembers(serverId) {
     if (!userContainer) return;
 
     const container = userContainer.querySelector('.glassContainer');
+
+    // 🌟 1. On casse le "Mur" parent pour voir le WebGL au fond
+    container.style.background = 'transparent';
+    container.style.boxShadow = 'none';
+    container.style.border = 'none';
+
     container.innerHTML = '';
     container.innerHTML = '<div class="user-list-header sectionTitle">Membres</div>';
 
@@ -26,7 +33,9 @@ export async function loadServerMembers(serverId) {
                 const doc = parser.parseFromString(templateHtml, 'text/html');
                 const userItem = doc.querySelector('.user-item');
 
-                userItem.id = `member-${member.id}`;
+                // 🌟 2. ID Unique pour le WebGL
+                const uniqueId = `member-glass-${member.id}`;
+                userItem.id = uniqueId;
                 userItem.dataset.id = member.id;
 
                 userItem.classList.remove('online', 'offline');
@@ -43,14 +52,32 @@ export async function loadServerMembers(serverId) {
 
                 userItem.onclick = () => openUserProfile(member.id, member.nickname, avatarSrc);
 
+                // 🌟 4. Forcer le contour physique pour détacher l'item du fond
+                userItem.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+                userItem.style.position = 'relative';
+
+                // On s'assure que l'avatar et le texte passent DEVANT le verre
+                Array.from(userItem.children).forEach(child => {
+                    child.style.position = 'relative';
+                    child.style.zIndex = '1';
+                });
+
+                // 🌟 5. Insertion dans le DOM
                 container.appendChild(userItem);
+
+                addLiquidGlassElement(uniqueId, {
+                    radius: 28.0,
+                    bezel: 28.0,
+                    thickness: 25.0,
+                    ior: 1.8,
+                    interactive: true
+                });
             });
         }
     } catch (err) {
         console.error("Erreur chargement membres :", err);
     }
 }
-
 
 // frontend/js/users.js (partie openUserProfile)
 export async function openUserProfile(userId, nickname, avatarSrc) {
@@ -60,12 +87,54 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
     modalContainer.innerHTML = html;
     modalContainer.style.display = 'flex';
 
+    // 🌟 L'ARME ABSOLUE POUR LA MODALE 🌟
+    // On cible la modale dynamiquement, sans avoir besoin de modifier le HTML
+    const profileCard = modalContainer.querySelector('.profile-card');
+
+    if (profileCard) {
+        // 1. On lui donne un ID unique dynamiquement
+        const uniqueId = `profile-glass-${userId}`;
+        profileCard.id = uniqueId;
+
+/*         // 2. On injecte le CSS de force absolue pour tuer tout fond opaque
+        profileCard.style.cssText += `
+            background: transparent !important;
+            background-color: transparent !important;
+            backdrop-filter: non;
+            box-shadow: none !important;
+            border-radius: 16px !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            position: relative !important;
+            z-index: 0 !important;
+            overflow: hidden !important;
+        `; */
+
+        profileCard.style.backdropFilter = 'blur(3px)';
+
+        // 3. On force tous les enfants (bannière, header, contenu) à passer au premier plan
+        Array.from(profileCard.children).forEach(child => {
+            child.style.position = 'relative';
+            child.style.zIndex = '1';
+        });
+
+        setTimeout(() => {
+            addLiquidGlassElement(uniqueId, {
+                radius: 42.0,
+                bezel: 42.0,
+                thickness: 50.0, // Très épais pour la modale
+                ior: 2.2,
+                brightness: 1.3, // Bien clair pour traverser l'overlay noir de la modale
+                tint: 0.1,
+                interactive: false
+            });
+        }, 10);
+    }
+
     // 1. Données de base immédiates (passées en arguments)
     document.getElementById('profileNickname').innerText = nickname;
 
     const profileAvatar = document.getElementById('profileAvatar');
     if (profileAvatar) {
-        // Met la bonne photo de profil passée en argument ou celle par défaut
         profileAvatar.src = avatarSrc || DEFAULT_AVATAR;
         profileAvatar.setAttribute('data-user-id', userId);
     }
@@ -76,22 +145,18 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
     const statusBadge = document.getElementById('profileStatusBadge');
     const statusText = document.getElementById('profileStatusText');
 
-    // 2. 🌟 NOUVEAU : Fetch des données complètes (Bio, Date, Statut réel)
+    // 2. Fetch des données complètes (Bio, Date, Statut réel)
     try {
         const res = await fetch(`/api/user-profile?user_id=${userId}`);
         if (res.ok) {
             const data = await res.json();
 
-            console.log(data);
-
-            // -- Gestion de la Bio --
             if (bioTextElement) {
                 bioTextElement.innerText = data.bio && data.bio.trim() !== ""
                     ? data.bio
                     : "Aucune biographie pour le moment.";
             }
 
-            // -- Gestion de la Date de créatin --
             if (creationDateElement && data.created_at) {
                 const date = new Date(data.created_at);
                 const options = { year: 'numeric', month: 'long', day: 'numeric' };
@@ -113,14 +178,11 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
                     statusText.classList.add('offline');
                 }
             }
-
         } else {
             if (bioTextElement) bioTextElement.innerText = "Erreur lors du chargement du profil.";
-            console.error("Erreur API lors du fetch profil");
         }
     } catch (e) {
         if (bioTextElement) bioTextElement.innerText = "Erreur de connexion.";
-        console.error("Erreur de chargement profil:", e);
     }
 
     // 3. Gestion des boutons (Logique existante)
@@ -173,6 +235,8 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
     modalContainer.onclick = (e) => {
         if (e.target === modalContainer || e.target.closest('.close-modal-btn')) {
             modalContainer.style.display = 'none';
+            // Le WebGL nettoiera le bloc de verre automatiquement via le garbage collector 
+            // quand le contenu de modalContainer sera vidé à la prochaine ouverture.
         }
     };
 }
@@ -255,6 +319,10 @@ export async function loadFriendsList() {
                 tempDiv.innerHTML = pendingTemplate;
                 const item = tempDiv.firstElementChild;
 
+                // 🌟 1. Création d'un ID unique pour le WebGL
+                const uniqueId = `pending-glass-${req.id}`;
+                item.id = uniqueId;
+
                 item.querySelector('.contact-nickname').innerText = req.nickname;
 
                 const avatarSrc = req.avatar && req.avatar !== "" ? req.avatar : DEFAULT_AVATAR;
@@ -281,6 +349,15 @@ export async function loadFriendsList() {
                 }
 
                 container.appendChild(item);
+
+                addLiquidGlassElement(uniqueId, {
+                    radius: 38.0,
+                    bezel: 38.0,
+                    thickness: 15.0,
+                    ior: 1.5,
+                    brightness: 0.8,
+                    interactive: true
+                });
             });
         }
 
@@ -304,7 +381,11 @@ export async function loadFriendsList() {
                 tempDiv.innerHTML = contactTemplate;
                 const item = tempDiv.firstElementChild;
 
+                // 🌟 1. Création d'un ID unique pour le WebGL
+                const uniqueId = `contact-glass-${friend.id}`;
+                item.id = uniqueId;
                 item.dataset.id = friend.id;
+
                 item.querySelector('.contact-nickname').innerText = friend.nickname;
 
                 const avatarSrc = friend.avatar && friend.avatar !== "" ? friend.avatar : DEFAULT_AVATAR;
@@ -325,13 +406,23 @@ export async function loadFriendsList() {
                 }
 
                 container.appendChild(item);
+
+                addLiquidGlassElement(uniqueId, {
+                    radius: 28.0,
+                    bezel: 28.0,
+                    thickness: 15.0,
+                    ior: 1.5,
+                    brightness: 0.8,
+                    interactive: true
+                });
             });
         }
+
+        console.log("✅ Chargement des amis terminé");
 
     } catch (err) {
         console.error("❌ Erreur loadFriendsList:", err);
     } finally {
-        // 🌟 On libère le verrou quoi qu'il arrive
         isLoadingFriends = false;
     }
 }

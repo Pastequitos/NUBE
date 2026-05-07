@@ -14,7 +14,7 @@
 .message-item:hover {
     background-color: var(--glass);
     /* backdrop-filter: blur(var(--backdropIntensity)); */
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     border: 1px solid var(--glassBorder);
 }
 

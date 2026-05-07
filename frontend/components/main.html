@@ -1,49 +1,62 @@
 <section id="leftContainer">
     <div id="roomContainer">
         <div id="serverList"></div>
-
         <button id="openModalBtn" class="add-server-btn">+</button>
     </div>
-    <div id="contactContainer">
+
+    <div id="contactContainer" style="position: relative; z-index: 0;">
         <div class="glassContainer"></div>
     </div>
-    <div id="userPanel">
-        <div id="userSection">
 
-            <span class="avatar">
-                <img id="currentUserAvatar" src="https://cdn.discordapp.com/embed/avatars/0.png">
-                <span class="status"></span>
-            </span>
-            <div class="userContainer">
-                <span class="pseudo" id="currentUserName">Chargement...</span>
-                <span class="status">en ligne</span>
+    <div id="userPanel" style="position: relative; z-index: 0;">
+        <div class="glassContainer">
+            <div id="userSection" style="position: relative; z-index: 1;">
+                <span class="avatar">
+                    <img id="currentUserAvatar"
+                        src="data:image/webp;base64,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"
+                        data-user-id="8e178c5a-5201-4a75-bd86-5ba82e98f7cb">
+                    <span class="status"></span>
+                </span>
+                <div class="userContainer">
+                    <span class="pseudo" id="currentUserName">coco</span>
+                    <span class="status">en ligne</span>
+                </div>
+                <span class="settings" id="btnOpenSettings">
+                    <img src="/frontend/css/setting.png">
+                </span>
             </div>
-            <span class="settings" id="btnOpenSettings">
-                <img src="/frontend/css/setting.png">
-            </span>
+            <div id="settings" style="position: relative; z-index: 1;"></div>
         </div>
-        <div id="settings"></div>
-    </div>
-
     </div>
 </section>
+
 <section id="rightContainer">
-    <div class="glassContainer">
-        <div id="messageContainer">
+
+    <div class="glassContainer" id="chatGlassWrapper" style="position: relative; z-index: 0;">
+        <div id="messageContainer" class="glassContainer">
             <div id="chatHeader">
                 <h3 id="currentServerName">Sélectionnez un salon à gauche</h3>
             </div>
             <div id="chatContainer"></div>
             <div id="inputContainer">
-                <input type="text" id="messageInput" placeholder="Votre message">
-                <button type="submit" id="sendMessage" class="send btn"></button>
+
+                <div id="messageInputWrapper" class="glassContainer"
+                    style="position: relative; overflow: hidden; z-index: 0;">
+                    <textarea id="messageInput" placeholder="Votre message" rows="1" autofocus spellcheck="false"
+                        autocorrect="off" autocapitalize="off"></textarea>
+                </div>
+
+                <div id="sendBtnWrapper" style="position: relative; display: inline-block;">
+                    <button type="submit" id="sendMessage" class="send btn"
+                        style="position: relative; z-index: 1; background: transparent;"></button>
+                </div>
             </div>
         </div>
     </div>
-    <div id="userContainer">
+
+    <div id="userContainer" style="position: relative; z-index: 0;">
         <div class="glassContainer"></div>
     </div>
 </section>
 
-<div id="modalContainer" style="display: none;">
-</div>
+<div id="modalContainer" style="display: none;"></div>

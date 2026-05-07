@@ -1,26 +1,25 @@
-/* Container de l'avatar pour positionner le point par dessus */
 .avatar-container {
     position: relative;
-    width: 32px;
-    height: 32px;
+    height: 42px;
+    width: 42px;
 }
 
-/* Le point de statut */
 .status-dot {
     position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 10px;
-    height: 10px;
+    bottom: 0px;
+    right: 0px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
-    border: 3px solid #2b2d31;
-    /* La couleur de fond du panel de droite */
-    background-color: #80848e;
-    /* Gris par défaut (offline) */
+    background-color: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(13px);
 }
 
 .user-item.online .status-dot {
-    background-color: #23a559;
+    background-color: rgba(35, 165, 89, 0.8);
+    border: 1px solid rgba(154, 204, 175, 0.3);
+    backdrop-filter: blur(13px);
 }
 
 .user-item.offline .user-nickname {
@@ -47,8 +46,10 @@
 }
 
 .user-avatar-small {
-    width: 32px;
-    height: 32px;
+
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     background-color: #5865f2;
     border-radius: 50%;
 }
@@ -77,11 +78,10 @@
 
     background-color: var(--glass);
     border: 1px solid var(--glassBorder);
-    backdrop-filter: blur(var(--backdropIntensity));
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     border-radius: var(--borderRadius);
 
-    animation: openModalContent 0.5s cubic-bezier(.1, 0, 0, 1) forwards;
+    animation: openModalContent 1s var(--cubic) forwards;
 
 
 }
@@ -135,7 +135,6 @@
         background-color: rgba(0, 0, 0, 0.8);
         border: 1px solid rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(13px);
-
     }
 
 
@@ -272,9 +271,13 @@
 }
 
 .contact-item.offline .status-dot {
-    background-color: gray;
+    background-color: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(13px);
 }
 
 .contact-item.online .status-dot {
-    background-color: #23a559;
+    background-color: rgba(35, 165, 89, 0.8);
+    border: 1px solid rgba(154, 204, 175, 0.3);
+    backdrop-filter: blur(13px);
 }

@@ -39,11 +39,9 @@ export async function renderRegister() {
             });
             const result = await response.json();
             if (response.ok) {
-                // 🌟 2. ON REMPLACE alert("Compte créé !") PAR ÇA :
                 notify.success("Compte créé avec succès !");
                 router('login');
             } else {
-                // 🌟 3. ON AFFICHE L'ERREUR EN ROUGE
                 notify.error(result.message || "Erreur lors de l'inscription");
             }
         } catch (err) {
@@ -78,11 +76,9 @@ export async function renderLogin() {
                     state.currentUser = result.nickname;
                     state.userId = String(result.id);
 
-                    // 🌟 Petit bonus : un message de bienvenue
                     notify.success(`Content de te revoir, ${result.nickname} !`);
                     router('home');
                 } else {
-                    // 🌟 ON REMPLACE L'ANCIEN MESSAGE TEXTE PAR LA NOTIF ERREUR
                     notify.error(result.message || "Identifiants incorrects");
                 }
             } catch (err) {
@@ -100,7 +96,6 @@ export async function handleLogout() {
             state.userId = null;
             if (state.socket) state.socket.close();
 
-            // 🌟 ON REMPLACE alert("Déconnexion !") PAR ÇA :
             notify.info("Tu as bien été déconnecté.");
             router('login');
         }
