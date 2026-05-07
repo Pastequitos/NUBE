@@ -223,10 +223,6 @@ export function addLiquidGlassElement(targetId, options = {}) {
         return;
     }
 
-    // Sécurité : On force le DOM à être transparent pour voir le WebGL derrière
-    target.style.background = 'transparent';
-    target.style.backgroundColor = 'transparent';
-    target.style.boxShadow = 'none';
 
     const baseOptions = {
         radius: options.radius || 38.0,

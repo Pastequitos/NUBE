@@ -873,7 +873,7 @@ p {
 }
 
 .glassContainer {
-    background-color: var(--glass);
+/*     background-color: var(--glass); */
     border: 1px solid var(--glassBorder);
     border-radius: var(--borderRadius);
     height: 100%;
