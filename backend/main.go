@@ -51,6 +51,11 @@ func main() {
 	mux.Handle("/api/login", handlers.RateLimitMiddleware(handlers.LoginHandler(db)))
 	mux.HandleFunc("/api/logout", handlers.LogoutHandler(db))
 	mux.HandleFunc("/api/me", handlers.MeHandler(db))
+	mux.Handle("/api/users/last-server", handlers.UpdateLastServerHandler(db))
+
+	// 🌟 NOUVELLES ROUTES POUR LES PASTILLES DE NOTIFICATION
+	mux.HandleFunc("/api/notifications/unread", handlers.GetUnreadCountsHandler(db))
+	mux.HandleFunc("/api/users/mark-private-read", handlers.MarkPrivateReadHandler(db))
 
 	mux.HandleFunc("/api/messages", handlers.GetMessagesHandler(db))
 	mux.HandleFunc("/api/messages/private", handlers.GetPrivateMessagesHandler(db))
@@ -67,6 +72,10 @@ func main() {
 	mux.HandleFunc("/api/friends/list", handlers.GetFriendsHandler(db, hub))
 	mux.HandleFunc("/api/friends/accept", handlers.AcceptFriendHandler(db, hub))
 	mux.HandleFunc("/api/friends/decline", handlers.DeclineFriendHandler(db, hub))
+	mux.HandleFunc("/api/servers/update-overview", handlers.UpdateServerOverviewHandler(db))
+	mux.HandleFunc("/api/servers/mute", handlers.MuteMemberHandler(db, hub))
+	mux.HandleFunc("/api/servers/ban", handlers.BanMemberHandler(db))
+	mux.HandleFunc("/api/servers/role", handlers.GetUserRoleHandler(db))
 
 	mux.HandleFunc("/api/avatar", handlers.UpdateAvatarHandler(db))
 	mux.HandleFunc("/api/settings", handlers.UpdateSettingsHandler(db))

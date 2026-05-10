@@ -2,7 +2,7 @@
 import { addLiquidGlassElement } from './liquidGlass.js';
 import { loadPrivateHistory } from './messages.js';
 import { state } from './state.js';
-import { loadComponent, DEFAULT_AVATAR } from './utils.js';
+import { loadComponent, DEFAULT_AVATAR, escapeHTML } from './utils.js'; // 🌟 Ajout de escapeHTML
 
 let isLoadingFriends = false;
 
@@ -12,7 +12,6 @@ export async function loadServerMembers(serverId) {
 
     const container = userContainer.querySelector('.glassContainer');
 
-    // 🌟 1. On casse le "Mur" parent pour voir le WebGL au fond
     container.style.background = 'transparent';
     container.style.boxShadow = 'none';
     container.style.border = 'none';
@@ -34,7 +33,6 @@ export async function loadServerMembers(serverId) {
                 const doc = parser.parseFromString(templateHtml, 'text/html');
                 const userItem = doc.querySelector('.user-item');
 
-                // 🌟 2. ID Unique pour le WebGL
                 const uniqueId = `member-glass-${member.id}`;
                 userItem.id = uniqueId;
                 userItem.dataset.id = member.id;
@@ -53,17 +51,14 @@ export async function loadServerMembers(serverId) {
 
                 userItem.onclick = () => openUserProfile(member.id, member.nickname, avatarSrc);
 
-                // 🌟 4. Forcer le contour physique pour détacher l'item du fond
                 userItem.style.border = '1px solid rgba(255, 255, 255, 0.15)';
                 userItem.style.position = 'relative';
 
-                // On s'assure que l'avatar et le texte passent DEVANT le verre
                 Array.from(userItem.children).forEach(child => {
                     child.style.position = 'relative';
                     child.style.zIndex = '1';
                 });
 
-                // 🌟 5. Insertion dans le DOM
                 container.appendChild(userItem);
 
                 addLiquidGlassElement(uniqueId, {
@@ -80,7 +75,6 @@ export async function loadServerMembers(serverId) {
     }
 }
 
-// frontend/js/users.js (partie openUserProfile)
 export async function openUserProfile(userId, nickname, avatarSrc) {
     const modalContainer = document.getElementById('modalContainer');
 
@@ -88,7 +82,6 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
     modalContainer.innerHTML = html;
     modalContainer.style.display = 'flex';
 
-    // 🌟 L'ARME ABSOLUE POUR LA MODALE 🌟
     const profileCard = modalContainer.querySelector('.profile-card');
 
     if (profileCard) {
@@ -167,22 +160,33 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
         if (bioTextElement) bioTextElement.innerText = "Erreur de connexion.";
     }
 
-    // 🌟 3. Gestion des boutons
     const addBtn = document.getElementById('addFriendBtn');
-    const dmBtn = document.getElementById('dmBtn'); // 🌟 On cible le bouton Message privé
+    const dmBtn = document.getElementById('dmBtn'); 
 
-    // 🌟 Clic sur le bouton Message Privé
     if (dmBtn) {
         dmBtn.onclick = () => {
-            modalContainer.style.display = 'none'; // Ferme la modale
-            loadPrivateHistory(userId, nickname); // Ouvre la conversation
+            modalContainer.style.display = 'none'; 
+            loadPrivateHistory(userId, nickname); 
+
+            // 🌟 1. On prévient le serveur qu'on a lu les messages de cet ami
+            fetch('/api/users/mark-private-read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target_id: userId })
+            });
+
+            // 🌟 2. On supprime la pastille rouge si elle existe dans la liste d'amis
+            const friendItem = document.querySelector(`.friend-item[data-id="${userId}"]`);
+            if (friendItem) {
+                const badge = friendItem.querySelector('.unread-badge');
+                if (badge) badge.remove();
+            }
         };
     }
 
-    // Clic sur Ajouter / Supprimer en ami
     if (state.userId === String(userId)) {
         addBtn.style.display = 'none';
-        if (dmBtn) dmBtn.style.display = 'none'; // On cache aussi le bouton MP si c'est nous-même
+        if (dmBtn) dmBtn.style.display = 'none'; 
     } else {
         addBtn.innerText = "Vérification...";
         addBtn.disabled = true;
@@ -224,7 +228,6 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
         }
     }
 
-    // Gestion fermeture modale
     modalContainer.onclick = (e) => {
         if (e.target === modalContainer || e.target.closest('.close-modal-btn')) {
             modalContainer.style.display = 'none';
@@ -232,7 +235,6 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
     };
 }
 
-// 🌟 Nouvelle fonction pour gérer les clics depuis le profil dynamiquement
 async function handleProfileFriendAction(targetId, action, btn) {
     btn.innerText = "Chargement...";
     btn.disabled = true;
@@ -285,10 +287,9 @@ export async function loadFriendsList() {
 
     try {
         const response = await fetch('/api/friends/list');
-        if (!response.ok) throw new Error("Erreur lors du fetch des amis");
+        if (!response.ok) throw new Error("Erreur fetch amis");
 
         const allRelations = await response.json();
-
         container.innerHTML = '';
 
         const pendingRequests = allRelations.filter(f => f.status === 'pending' && !f.is_requester);
@@ -369,6 +370,9 @@ export async function loadFriendsList() {
 
                 const uniqueId = `contact-glass-${friend.id}`;
                 item.id = uniqueId;
+                
+                // 🌟 Très important : on met bien la classe friend-item et le dataset pour retrouver l'élément
+                item.classList.add('friend-item');
                 item.dataset.id = friend.id;
 
                 item.querySelector('.contact-nickname').innerText = friend.nickname;
@@ -380,8 +384,26 @@ export async function loadFriendsList() {
                     imgElement.setAttribute('data-user-id', friend.id);
                 }
 
+                // 🌟 3. AJOUT DE LA PASTILLE SI MESSAGE NON LU
+                if (friend.unread_count && friend.unread_count > 0) {
+                    const badge = document.createElement('span');
+                    badge.className = 'unread-badge';
+                    badge.innerText = friend.unread_count > 9 ? '9+' : friend.unread_count;
+                    item.appendChild(badge);
+                }
+
                 item.onclick = () => {
                     loadPrivateHistory(friend.id, friend.nickname);
+                    
+                    // 🌟 4. Effacement de la pastille + requête backend
+                    const b = item.querySelector('.unread-badge');
+                    if (b) b.remove();
+                    
+                    fetch('/api/users/mark-private-read', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ target_id: friend.id })
+                    });
                 };
                 
                 item.oncontextmenu = (e) => {
@@ -409,9 +431,6 @@ export async function loadFriendsList() {
                 });
             });
         }
-
-        console.log("✅ Chargement des amis terminé");
-
     } catch (err) {
         console.error("❌ Erreur loadFriendsList:", err);
     } finally {

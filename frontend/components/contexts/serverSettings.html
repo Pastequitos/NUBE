@@ -1,0 +1,55 @@
+<div class="settings-modal-wrapper">
+    <div class="settings-sidebar">
+        <h3 class="settings-server-name" id="settingsServerNameTitle">Nom du Serveur</h3>
+        <div class="settings-tab active" data-tab="overview">Aperçu</div>
+        <div class="settings-tab" data-tab="members">Membres & Rôles</div>
+        <div class="settings-tab" data-tab="moderation">Modération</div>
+    </div>
+    
+    <div class="settings-content">
+        <div class="settings-pane active" id="pane-overview">
+            <h2>Aperçu du serveur</h2>
+            <div class="settings-overview-layout">
+                <div class="settings-avatar-section">
+                    <div class="settings-avatar-wrapper" id="settingsAvatarPreview">
+                        <span class="settings-avatar-initials">S</span>
+                        <div class="settings-avatar-overlay">CHANGER</div>
+                    </div>
+                    <input type="file" id="serverAvatarInput" accept="image/png, image/jpeg, image/webp" style="display: none;">
+                    <p class="settings-hint">Taille recommandée : 128x128px</p>
+                </div>
+                <div class="settings-info-section">
+                    <label>NOM DU SERVEUR</label>
+                    <input type="text" id="settingsServerNameInput" class="discord-input" placeholder="Nouveau nom...">
+                </div>
+            </div>
+            <div class="settings-danger-zone">
+                <div class="danger-info">
+                    <h4>Supprimer le serveur</h4>
+                    <p>Une fois supprimé, un serveur ne peut pas être récupéré. Soyez certain de votre choix.</p>
+                </div>
+                <button class="discord-btn danger-outline" id="deleteServerBtn">Supprimer le serveur</button>
+            </div>
+            <button class="discord-btn success" id="saveOverviewBtn">Enregistrer les modifications</button>
+        </div>
+
+        <div class="settings-pane" id="pane-members">
+            <h2>Membres & Rôles</h2>
+            <p class="settings-hint">Gérez qui a les droits d'administration sur ce serveur.</p>
+            <div class="settings-list" id="settingsMembersList">
+                </div>
+        </div>
+
+        <div class="settings-pane" id="pane-moderation">
+            <h2>Modération</h2>
+            <p class="settings-hint">Réduisez au silence ou bannissez les fauteurs de troubles.</p>
+            <div class="settings-list" id="settingsModerationList">
+                </div>
+        </div>
+
+        <button class="close-settings-btn" id="closeServerSettings">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <span>ÉCHAP</span>
+        </button>
+    </div>
+</div>

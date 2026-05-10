@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 var upgrader = websocket.Upgrader{
@@ -17,6 +18,9 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
+
+// 🌟 On prépare la politique de nettoyage une seule fois pour tout le fichier
+var ugcPolicy = bluemonday.StrictPolicy()
 
 type Client struct {
 	UserID      string
@@ -37,10 +41,10 @@ func ServeWs(hub *Hub, db *sql.DB) http.HandlerFunc {
 
 		var nickname, userID string
 		err = db.QueryRow(`
-			SELECT u.nickname, u.id 
-			FROM users u 
-			JOIN sessions s ON u.id = s.user_id 
-			WHERE s.id = ?`, cookie.Value).Scan(&nickname, &userID)
+            SELECT u.nickname, u.id 
+            FROM users u 
+            JOIN sessions s ON u.id = s.user_id 
+            WHERE s.id = ?`, cookie.Value).Scan(&nickname, &userID)
 		if err != nil {
 			return
 		}
@@ -70,7 +74,6 @@ func (c *Client) ReadPump(hub *Hub) {
 		c.Conn.Close()
 	}()
 
-	// 🌟 SÉCURITÉ 1 : On bloque les paquets de plus de 8 Ko (empêche le crash serveur)
 	c.Conn.SetReadLimit(8192)
 
 	for {
@@ -81,44 +84,47 @@ func (c *Client) ReadPump(hub *Hub) {
 
 		now := time.Now()
 
-		// --- 🛡️ SÉCURITÉ ANTI-SPAM (Niveau 1) : Délai abaissé à 100ms ---
+		// --- 🛡️ SÉCURITÉ ANTI-SPAM (Niveau 1) : 100ms ---
 		if now.Sub(c.LastMessage) < 100*time.Millisecond {
 			c.sendSystemNotif("Doucement ! Un message toutes les 100ms max.")
 			continue
 		}
 
-		// --- 🛡️ SÉCURITÉ ANTI-SPAM (Niveau 2) : 10 messages max en 10 secondes ---
+		// --- 🛡️ SÉCURITÉ ANTI-SPAM (Niveau 2) : 10/10s ---
 		c.MsgHistory = append(c.MsgHistory, now)
 		if len(c.MsgHistory) > 10 {
-			c.MsgHistory = c.MsgHistory[1:] // On ne garde en mémoire que les 10 derniers
+			c.MsgHistory = c.MsgHistory[1:]
 		}
 
 		if len(c.MsgHistory) == 10 {
 			firstMsgTime := c.MsgHistory[0]
 			if now.Sub(firstMsgTime) < 10*time.Second {
 				c.sendSystemNotif("Calmos ! Pas plus de 10 messages en 10 secondes.")
-				// On retire cette tentative de l'historique car elle a été rejetée
 				c.MsgHistory = c.MsgHistory[:9]
 				continue
 			}
 		}
 
-		// Le message est valide, on met à jour le chrono !
 		c.LastMessage = now
 
-		// --- SUITE DU TRAITEMENT NORMAL ---
 		var msg Message
 		if err := json.Unmarshal(message, &msg); err == nil {
 
-			// 🌟 SÉCURITÉ 3 : On nettoie et on valide le texte du message !
-			msg.Content = strings.TrimSpace(msg.Content)
-			if msg.Content == "" {
-				continue // On ignore silencieusement les messages vides
-			}
-			if len(msg.Content) > 2000 { // Limite façon Discord
-				msg.Content = msg.Content[:2000] // On coupe ce qui dépasse
+			// 🌟 SÉCURITÉ 3 : Nettoyage strict (Sanitization)
+			// 1. On enlève les espaces inutiles
+			// 2. On passe le nettoyeur Bluemonday pour supprimer tout HTML/Script
+			cleanContent := ugcPolicy.Sanitize(strings.TrimSpace(msg.Content))
+
+			if cleanContent == "" {
+				continue
 			}
 
+			// On limite la taille après nettoyage
+			if len(cleanContent) > 2000 {
+				cleanContent = cleanContent[:2000]
+			}
+
+			msg.Content = cleanContent
 			msg.CreatedAt = time.Now().Format(time.RFC3339)
 			msg.Sender = c.Nickname
 
@@ -128,7 +134,6 @@ func (c *Client) ReadPump(hub *Hub) {
 
 			msgID := uuid.New().String()
 
-			// 🌟 On récupère l'avatar une seule fois pour les deux cas
 			var avatar sql.NullString
 			_ = c.DB.QueryRow("SELECT avatar FROM users WHERE id = ?", c.UserID).Scan(&avatar)
 			finalAvatar := ""
@@ -136,7 +141,6 @@ func (c *Client) ReadPump(hub *Hub) {
 				finalAvatar = avatar.String
 			}
 
-			// 🌟 LOGIQUE MESSAGE PRIVÉ
 			if msg.Type == "private" {
 				_, err = c.DB.Exec(`
                     INSERT INTO private_messages (id, sender_id, receiver_id, content) 
@@ -160,11 +164,57 @@ func (c *Client) ReadPump(hub *Hub) {
 				}
 
 				newJSON, _ := json.Marshal(outgoingMsg)
-				// On n'envoie qu'à l'expéditeur et au destinataire !
 				hub.SendToUsers(newJSON, c.UserID, msg.ReceiverID)
 
-			} else {
-				// 🌟 LOGIQUE MESSAGE PUBLIC
+			} else { // 🌟 C'est un message de Serveur
+
+				var mutedStr sql.NullString
+
+				err := c.DB.QueryRow(`
+				SELECT muted_until 
+				FROM server_members 
+				WHERE server_id = ? AND user_id = ?`,
+					msg.ServerID, c.UserID).Scan(&mutedStr)
+
+				if err != nil {
+					c.sendSystemNotif("Vous n'êtes pas membre de ce serveur.")
+					continue
+				}
+
+				// 🌟 AJOUT DE LOGS DE DÉBOGAGE ICI :
+				fmt.Println("--- DEBUG MUTE ---")
+				fmt.Println("Utilisateur :", c.Nickname)
+				fmt.Println("A une date de mute en BDD ?", mutedStr.Valid)
+
+				if mutedStr.Valid {
+					fmt.Println("Date brute dans la BDD :", mutedStr.String)
+
+					// 🌟 CORRECTION ICI : On utilise time.RFC3339 (le format avec le T et le Z)
+					mutedTime, parseErr := time.Parse(time.RFC3339, mutedStr.String)
+
+					// Petite sécurité : si ça rate, on essaie quand même l'ancien format au cas où
+					if parseErr != nil {
+						mutedTime, parseErr = time.ParseInLocation("2006-01-02 15:04:05", mutedStr.String, time.Local)
+					}
+
+					if parseErr != nil {
+						fmt.Println("❌ ERREUR DÉFINITIVE DE FORMAT :", parseErr)
+					} else {
+						fmt.Println("Heure actuelle :", time.Now().Format("2006-01-02 15:04:05"))
+						fmt.Println("Fin du Mute    :", mutedTime.Format("2006-01-02 15:04:05"))
+
+						if time.Now().Before(mutedTime) {
+							fmt.Println("✅ L'UTILISATEUR EST BIEN BLOQUÉ !")
+							formattedDate := mutedTime.Format("02/01/2006 à 15h04")
+							c.sendSystemNotif("🔇 Vous êtes réduit au silence sur ce serveur jusqu'au " + formattedDate + ".")
+							continue // 🚫 On bloque le message ici !
+						} else {
+							fmt.Println("🔓 LE MUTE EST DÉJÀ EXPIRÉ (Heure actuelle > Fin du mute)")
+						}
+					}
+				}
+
+				// 👇 Si le code arrive ici, c'est que l'utilisateur a le droit de parler 👇
 				_, err = c.DB.Exec(`
                     INSERT INTO messages (id, server_id, sender_id, content, message_type) 
                     VALUES (?, ?, ?, ?, ?)`,
@@ -193,11 +243,9 @@ func (c *Client) ReadPump(hub *Hub) {
 	}
 }
 
-// 💡 À ajouter n'importe où dans ton fichier websocket.go (hors de ReadPump)
-// Cette petite fonction permet d'envoyer l'alerte rouge directement au spammeur
 func (c *Client) sendSystemNotif(content string) {
 	msg := map[string]interface{}{
-		"type":         "system", // 🌟 Crucial pour que ton websocket.js l'accepte
+		"type":         "system",
 		"message_type": "system",
 		"content":      content,
 		"created_at":   time.Now().Format(time.RFC3339),

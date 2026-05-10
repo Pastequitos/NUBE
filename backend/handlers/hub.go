@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 )
 
@@ -109,18 +110,19 @@ func (h *Hub) SendToUsers(message []byte, userIDs ...string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	targets := make(map[string]bool)
-	for _, id := range userIDs {
-		targets[id] = true
-	}
+	fmt.Printf("📢 Tentative d'envoi WS à : %v\n", userIDs) // DEBUG
 
 	for client := range h.Clients {
-		if targets[client.UserID] {
-			select {
-			case client.Send <- message:
-			default:
-				close(client.Send)
-				delete(h.Clients, client)
+		// fmt.Printf("🔍 Client connecté en mémoire : %s\n", client.UserID) // DEBUG
+		for _, id := range userIDs {
+			if client.UserID == id {
+				fmt.Printf("✅ Cible trouvée, envoi du message !\n")
+				select {
+				case client.Send <- message:
+				default:
+					close(client.Send)
+					delete(h.Clients, client)
+				}
 			}
 		}
 	}

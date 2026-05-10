@@ -6,6 +6,7 @@ import { renderHome } from './main.js';
 // 🌟 1. ON IMPORTE LE NOUVEAU SYSTÈME ICI
 import { notify } from './notifications.js';
 import { addLiquidGlassElement } from './liquidGlass.js';
+import { loadFriendsList } from './users.js';
 
 export function router(page) {
     switch (page) {
@@ -194,17 +195,39 @@ export async function checkAuth() {
         const res = await fetch('/api/me');
         if (res.ok) {
             const data = await res.json();
+            
+            // 1. On remplit l'état global
             state.currentUser = data.nickname;
             state.userId = String(data.id);
-
             state.userAvatar = data.avatar;
 
-            console.log(data);
-            console.log(state);
+            // 2. On affiche la structure de la page Home
+            await router('home'); 
 
-            router('home');
+            // 🌟 3. ON CHARGE LES DONNÉES AVANT DE SÉLECTIONNER LE SALON
+            // On importe dynamiquement pour éviter les dépendances circulaires
+            const { loadServers, selectServer } = await import('./server.js');
+
+            // On attend que les listes soient chargées et affichées dans le DOM
+            await Promise.all([
+                loadServers(),
+                loadFriendsList()
+            ]);
+
+            // 🌟 4. MAINTENANT ON RECONNECTE LE DERNIER SALON
+            if (data.last_server_id) {
+                console.log(`🔄 Reconnexion à : ${data.last_server_id}`);
+                // Un petit délai pour s'assurer que le DOM est bien rendu par loadServers
+                setTimeout(() => {
+                    selectServer(data.last_server_id);
+                }, 50);
+            }
+
         } else {
             router('login');
         }
-    } catch { router('login'); }
+    } catch (err) { 
+        console.error("Erreur checkAuth:", err);
+        router('login'); 
+    }
 }

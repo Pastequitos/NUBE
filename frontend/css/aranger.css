@@ -280,3 +280,120 @@
     border: 1px solid rgba(154, 204, 175, 0.3);
     backdrop-filter: blur(13px);
 }
+
+
+/* --- Modale Paramètres Serveur --- */
+.settings-modal-wrapper {
+    display: flex;
+    width: 90vw;
+    height: 85vh;
+    max-width: 1000px;
+    background-color: #313338;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    color: #dbdee1;
+}
+
+.settings-sidebar {
+    width: 250px;
+    background-color: #2b2d31;
+    padding: 60px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.settings-server-name {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #949ba4;
+    margin-bottom: 10px;
+    font-weight: 800;
+}
+
+.settings-tab {
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 15px;
+    color: #b5bac1;
+    transition: background 0.2s, color 0.2s;
+}
+
+.settings-tab:hover { background-color: #3f4147; color: #dbdee1; }
+.settings-tab.active { background-color: #404249; color: #fff; }
+
+.settings-content {
+    flex: 1;
+    padding: 60px 40px;
+    position: relative;
+    overflow-y: auto;
+}
+
+.settings-pane { display: none; }
+.settings-pane.active { display: block; animation: fadeIn 0.3s ease; }
+
+.settings-overview-layout {
+    display: flex;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.settings-avatar-wrapper {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background-color: #5865F2;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden; cursor: pointer;
+    font-size: 30px; font-weight: bold; color: white;
+}
+
+.settings-avatar-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: bold; opacity: 0; transition: opacity 0.2s;
+}
+.settings-avatar-wrapper:hover .settings-avatar-overlay { opacity: 1; }
+
+.settings-info-section { flex: 1; }
+
+.settings-list {
+    margin-top: 20px; display: flex; flex-direction: column; gap: 10px;
+}
+
+.settings-member-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #2b2d31; padding: 10px 15px; border-radius: 6px;
+}
+
+.close-settings-btn {
+    position: absolute; top: 40px; right: 40px;
+    background: transparent; border: none; color: #949ba4;
+    cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+.close-settings-btn:hover { color: #dbdee1; }
+.close-settings-btn span { font-size: 10px; font-weight: bold; }
+
+.discord-select {
+    background: #1e1f22; color: #dbdee1; border: none; padding: 8px; border-radius: 4px; outline: none;
+}
+.discord-btn.danger { background: #da373c; color: white; }
+.discord-btn.warning { background: #f0b232; color: white; }
+
+
+.settings-danger-zone {
+    margin-top: 40px;
+    padding: 20px;
+    border: 1px solid #da373c;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.danger-info h4 { color: #f23f42; text-transform: uppercase; font-size: 14px; margin-bottom: 5px; }
+.danger-info p { font-size: 13px; color: #949ba4; }
+.discord-btn.danger-outline {
+    background: transparent; border: 1px solid #da373c; color: white; transition: 0.2s;
+}
+.discord-btn.danger-outline:hover { background: #da373c; }

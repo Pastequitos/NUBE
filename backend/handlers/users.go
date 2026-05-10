@@ -116,19 +116,34 @@ func GetFriendsHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 		}
 
 		var myID string
-		db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
+		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
+		if err != nil {
+			http.Error(w, "Session invalide", http.StatusUnauthorized)
+			return
+		}
 
-		// 🌟 1. Ajout de u.avatar dans le SELECT
+		// 🌟 SQL MAGIQUE : On ajoute une sous-requête pour compter les messages non lus
+		// COALESCE permet de mettre une date très ancienne si on n'a jamais ouvert la discussion.
 		query := `
-            SELECT u.id, u.nickname, u.avatar, f.status, f.action_user_id
+            SELECT u.id, u.nickname, u.avatar, f.status, f.action_user_id,
+            (
+                SELECT COUNT(*) 
+                FROM private_messages pm 
+                WHERE pm.sender_id = u.id 
+                  AND pm.receiver_id = ? 
+                  AND pm.created_at > COALESCE(
+                      (SELECT prr.last_read_at FROM private_read_receipts prr WHERE prr.user_id = ? AND prr.peer_id = u.id), 
+                      '1970-01-01 00:00:00'
+                  )
+            ) as unread_count
             FROM friends f
             JOIN users u ON (u.id = f.user_id1 OR u.id = f.user_id2)
             WHERE (f.user_id1 = ? OR f.user_id2 = ?) 
               AND u.id != ?`
 
-		rows, err := db.Query(query, myID, myID, myID)
+		rows, err := db.Query(query, myID, myID, myID, myID, myID)
 		if err != nil {
-			http.Error(w, "Erreur SQL", 500)
+			http.Error(w, "Erreur SQL lors de la récupération des amis", 500)
 			return
 		}
 		defer rows.Close()
@@ -137,11 +152,14 @@ func GetFriendsHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 		for rows.Next() {
 			var id, nickname, status, actionUserID string
 			var avatar sql.NullString
+			var unreadCount int // 🌟 Nouvelle variable
 
-			if err := rows.Scan(&id, &nickname, &avatar, &status, &actionUserID); err != nil {
+			// On ajoute &unreadCount au scan
+			if err := rows.Scan(&id, &nickname, &avatar, &status, &actionUserID, &unreadCount); err != nil {
 				continue
 			}
 
+			// Statut en ligne via le Hub
 			isOnline := false
 			for client := range hub.Clients {
 				if client.UserID == id {
@@ -164,6 +182,7 @@ func GetFriendsHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 				"online":       isOnline,
 				"is_requester": isRequester,
 				"avatar":       finalAvatar,
+				"unread_count": unreadCount, // 🌟 On l'envoie au Frontend
 			})
 		}
 
@@ -316,5 +335,135 @@ func UpdateAvatarHandler(db *sql.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{"message": "Avatar mis à jour avec succès"})
+	}
+}
+
+func UpdateLastServerHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+			return
+		}
+
+		// 1. Vérifier la session
+		cookie, err := r.Cookie("session_token")
+		if err != nil {
+			http.Error(w, "Non connecté", http.StatusUnauthorized)
+			return
+		}
+
+		var myID string
+		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
+		if err != nil {
+			http.Error(w, "Session invalide", http.StatusUnauthorized)
+			return
+		}
+
+		var req struct {
+			ServerID string `json:"server_id"`
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+
+		// 🌟 ON FAIT DEUX UPDATES D'UN COUP
+		// 1. Mémorise le dernier serveur (ton code actuel)
+		db.Exec("UPDATE users SET last_server_id = ? WHERE id = ?", req.ServerID, myID)
+
+		// 2. Marque le serveur comme LU (Nouveau !)
+		// On met à jour la date dans la table de liaison
+		db.Exec(`
+            UPDATE server_members 
+            SET last_read_at = CURRENT_TIMESTAMP 
+            WHERE server_id = ? AND user_id = ?`,
+			req.ServerID, myID)
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// GetUnreadCountsHandler renvoie le nombre de messages non lus pour chaque serveur
+func GetUnreadCountsHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session_token")
+		if err != nil {
+			http.Error(w, "Non connecté", http.StatusUnauthorized)
+			return
+		}
+
+		var userID string
+		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&userID)
+		if err != nil {
+			http.Error(w, "Session invalide", http.StatusUnauthorized)
+			return
+		}
+
+		// 🌟 On compte les messages créés APRÈS la date de dernière lecture
+		// et on exclut les messages envoyés par l'utilisateur lui-même (m.sender_id != sm.user_id) !
+		query := `
+            SELECT sm.server_id, COUNT(m.id) 
+            FROM server_members sm
+            LEFT JOIN messages m ON sm.server_id = m.server_id 
+                AND m.created_at > sm.last_read_at 
+                AND m.sender_id != sm.user_id
+            WHERE sm.user_id = ?
+            GROUP BY sm.server_id`
+
+		rows, err := db.Query(query, userID)
+		if err != nil {
+			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		results := make(map[string]int)
+		for rows.Next() {
+			var sID string
+			var count int
+			if err := rows.Scan(&sID, &count); err == nil {
+				results[sID] = count
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(results)
+	}
+}
+
+// MarkPrivateReadHandler met à jour la date de dernière lecture d'une conversation privée
+func MarkPrivateReadHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session_token")
+		if err != nil {
+			http.Error(w, "Non autorisé", http.StatusUnauthorized)
+			return
+		}
+
+		var myID string
+		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
+		if err != nil {
+			http.Error(w, "Session invalide", http.StatusUnauthorized)
+			return
+		}
+
+		var req struct {
+			TargetID string `json:"target_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Requête invalide", http.StatusBadRequest)
+			return
+		}
+
+		// 🌟 INSERT OR REPLACE : Magie de SQLite !
+		// Si la ligne existe, il la met à jour. Si elle n'existe pas (première discussion), il la crée.
+		_, err = db.Exec(`
+            INSERT OR REPLACE INTO private_read_receipts (user_id, peer_id, last_read_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)`,
+			myID, req.TargetID)
+
+		if err != nil {
+			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }

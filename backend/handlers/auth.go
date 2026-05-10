@@ -171,28 +171,41 @@ func MeHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// 🌟 On utilise sql.NullString car last_server_id peut être VIDE (NULL) en BDD
 		var id, nickname, avatar string
+		var lastServerID sql.NullString
 
+		// 🌟 On met à jour la requête pour récupérer le last_server_id
 		query := `
-		SELECT u.id, u.nickname, u.avatar 
-		FROM users u 
-		JOIN sessions s ON u.id = s.user_id 
-		WHERE s.id = ? AND s.expires_at > CURRENT_TIMESTAMP
-	`
+            SELECT u.id, u.nickname, u.avatar, u.last_server_id 
+            FROM users u 
+            JOIN sessions s ON u.id = s.user_id 
+            WHERE s.id = ? AND s.expires_at > CURRENT_TIMESTAMP`
 
-		err = db.QueryRow(query, cookie.Value).Scan(&id, &nickname, &avatar)
+		err = db.QueryRow(query, cookie.Value).Scan(&id, &nickname, &avatar, &lastServerID)
 		if err != nil {
+			// Si l'erreur est "no rows", c'est que la session est expirée
+			// Si c'est une autre erreur, c'est probablement que la colonne n'existe pas encore (voir point 2)
 			http.Error(w, "Session invalide ou expirée", http.StatusUnauthorized)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 
-		json.NewEncoder(w).Encode(map[string]string{
-			"id":       id,
-			"nickname": nickname,
-			"avatar":   avatar,
-		})
+		// On prépare la réponse
+		response := map[string]interface{}{
+			"id":             id,
+			"nickname":       nickname,
+			"avatar":         avatar,
+			"last_server_id": nil,
+		}
+
+		// Si on a bien un serveur enregistré, on l'ajoute à la réponse
+		if lastServerID.Valid {
+			response["last_server_id"] = lastServerID.String
+		}
+
+		json.NewEncoder(w).Encode(response)
 	}
 }
 
