@@ -1,5 +1,6 @@
 // users.js
 import { addLiquidGlassElement } from './liquidGlass.js';
+import { loadPrivateHistory } from './messages.js';
 import { state } from './state.js';
 import { loadComponent, DEFAULT_AVATAR } from './utils.js';
 
@@ -88,30 +89,14 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
     modalContainer.style.display = 'flex';
 
     // 🌟 L'ARME ABSOLUE POUR LA MODALE 🌟
-    // On cible la modale dynamiquement, sans avoir besoin de modifier le HTML
     const profileCard = modalContainer.querySelector('.profile-card');
 
     if (profileCard) {
-        // 1. On lui donne un ID unique dynamiquement
         const uniqueId = `profile-glass-${userId}`;
         profileCard.id = uniqueId;
 
-/*         // 2. On injecte le CSS de force absolue pour tuer tout fond opaque
-        profileCard.style.cssText += `
-            background: transparent !important;
-            background-color: transparent !important;
-            backdrop-filter: non;
-            box-shadow: none !important;
-            border-radius: 16px !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            position: relative !important;
-            z-index: 0 !important;
-            overflow: hidden !important;
-        `; */
-
         profileCard.style.backdropFilter = 'blur(3px)';
 
-        // 3. On force tous les enfants (bannière, header, contenu) à passer au premier plan
         Array.from(profileCard.children).forEach(child => {
             child.style.position = 'relative';
             child.style.zIndex = '1';
@@ -121,16 +106,15 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
             addLiquidGlassElement(uniqueId, {
                 radius: 42.0,
                 bezel: 42.0,
-                thickness: 50.0, // Très épais pour la modale
+                thickness: 50.0, 
                 ior: 2.2,
-                brightness: 1.3, // Bien clair pour traverser l'overlay noir de la modale
+                brightness: 1.3, 
                 tint: 0.1,
                 interactive: false
             });
         }, 10);
     }
 
-    // 1. Données de base immédiates (passées en arguments)
     document.getElementById('profileNickname').innerText = nickname;
 
     const profileAvatar = document.getElementById('profileAvatar');
@@ -139,13 +123,11 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
         profileAvatar.setAttribute('data-user-id', userId);
     }
 
-    // Ciblage des nouveaux éléments
     const bioTextElement = document.getElementById('profileBioText');
     const creationDateElement = document.getElementById('profileCreationDate');
     const statusBadge = document.getElementById('profileStatusBadge');
     const statusText = document.getElementById('profileStatusText');
 
-    // 2. Fetch des données complètes (Bio, Date, Statut réel)
     try {
         const res = await fetch(`/api/user-profile?user_id=${userId}`);
         if (res.ok) {
@@ -185,11 +167,22 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
         if (bioTextElement) bioTextElement.innerText = "Erreur de connexion.";
     }
 
-    // 3. Gestion des boutons (Logique existante)
+    // 🌟 3. Gestion des boutons
     const addBtn = document.getElementById('addFriendBtn');
+    const dmBtn = document.getElementById('dmBtn'); // 🌟 On cible le bouton Message privé
 
+    // 🌟 Clic sur le bouton Message Privé
+    if (dmBtn) {
+        dmBtn.onclick = () => {
+            modalContainer.style.display = 'none'; // Ferme la modale
+            loadPrivateHistory(userId, nickname); // Ouvre la conversation
+        };
+    }
+
+    // Clic sur Ajouter / Supprimer en ami
     if (state.userId === String(userId)) {
         addBtn.style.display = 'none';
+        if (dmBtn) dmBtn.style.display = 'none'; // On cache aussi le bouton MP si c'est nous-même
     } else {
         addBtn.innerText = "Vérification...";
         addBtn.disabled = true;
@@ -235,8 +228,6 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
     modalContainer.onclick = (e) => {
         if (e.target === modalContainer || e.target.closest('.close-modal-btn')) {
             modalContainer.style.display = 'none';
-            // Le WebGL nettoiera le bloc de verre automatiquement via le garbage collector 
-            // quand le contenu de modalContainer sera vidé à la prochaine ouverture.
         }
     };
 }
@@ -254,10 +245,8 @@ async function handleProfileFriendAction(targetId, action, btn) {
         });
 
         if (response.ok) {
-            // On recharge la liste d'amis derrière pour que l'interface reste synchronisée
             loadFriendsList();
 
-            // On met à jour l'apparence du bouton selon l'action qu'on vient de faire
             if (action === 'add') {
                 btn.innerText = "Demande en attente";
                 btn.style.backgroundColor = "#80848e";
@@ -283,7 +272,6 @@ async function handleProfileFriendAction(targetId, action, btn) {
 }
 
 export async function loadFriendsList() {
-    // 🌟 Sécurité anti-doublon
     if (isLoadingFriends) return;
     isLoadingFriends = true;
 
@@ -301,7 +289,6 @@ export async function loadFriendsList() {
 
         const allRelations = await response.json();
 
-        // On vide proprement avant de remplir
         container.innerHTML = '';
 
         const pendingRequests = allRelations.filter(f => f.status === 'pending' && !f.is_requester);
@@ -319,7 +306,6 @@ export async function loadFriendsList() {
                 tempDiv.innerHTML = pendingTemplate;
                 const item = tempDiv.firstElementChild;
 
-                // 🌟 1. Création d'un ID unique pour le WebGL
                 const uniqueId = `pending-glass-${req.id}`;
                 item.id = uniqueId;
 
@@ -351,8 +337,8 @@ export async function loadFriendsList() {
                 container.appendChild(item);
 
                 addLiquidGlassElement(uniqueId, {
-                    radius: 38.0,
-                    bezel: 38.0,
+                    radius: 28.0,
+                    bezel: 28.0,
                     thickness: 15.0,
                     ior: 1.5,
                     brightness: 0.8,
@@ -381,7 +367,6 @@ export async function loadFriendsList() {
                 tempDiv.innerHTML = contactTemplate;
                 const item = tempDiv.firstElementChild;
 
-                // 🌟 1. Création d'un ID unique pour le WebGL
                 const uniqueId = `contact-glass-${friend.id}`;
                 item.id = uniqueId;
                 item.dataset.id = friend.id;
@@ -395,7 +380,14 @@ export async function loadFriendsList() {
                     imgElement.setAttribute('data-user-id', friend.id);
                 }
 
-                item.onclick = () => openUserProfile(friend.id, friend.nickname, avatarSrc);
+                item.onclick = () => {
+                    loadPrivateHistory(friend.id, friend.nickname);
+                };
+                
+                item.oncontextmenu = (e) => {
+                    e.preventDefault(); 
+                    openUserProfile(friend.id, friend.nickname, avatarSrc);
+                };
 
                 if (friend.online === true) {
                     item.classList.add('online');

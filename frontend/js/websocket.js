@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { appendMessage } from './messages.js';
 import { loadFriendsList, loadServerMembers } from './users.js';
-import { updateAllAvatarsInDOM } from './utils.js'; // 🌟 Import manquant ajouté !
+import { updateAllAvatarsInDOM } from './utils.js';
 
 export function connectWS() {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -11,17 +11,34 @@ export function connectWS() {
         const data = JSON.parse(event.data);
         console.log("📩 WebSocket received:", data);
 
-        // 🌟 Utilisation du switch pour un code plus propre et rapide
         switch (data.type) {
             
+            // 🌟 NOUVEAU : GESTION DES MESSAGES SYSTÈME (Anti-spam, etc.)
+            case 'system':
+                appendMessage(data);
+                break;
+
             case 'public':
                 if (data.server_id === state.activeServerId) {
                     appendMessage(data);
                 }
                 break;
 
+            case 'private':
+                // On vérifie si la conversation active correspond à ce message.
+                const isCurrentConversation = 
+                    (String(state.activeDmUserId) === String(data.sender_id)) || 
+                    (String(state.activeDmUserId) === String(data.receiver_id));
+
+                if (isCurrentConversation) {
+                    appendMessage(data);
+                } else {
+                    console.log(`💬 Nouveau message non lu de ${data.sender}`);
+                }
+                break;
+
             case 'user_status':
-                if (data.user_id === state.userId) return; // On ignore notre propre statut
+                if (data.user_id === state.userId) return; 
 
                 const contactItems = document.querySelectorAll(`[data-id="${data.user_id}"]`);
                 if (contactItems.length > 0) {
@@ -42,12 +59,6 @@ export function connectWS() {
                 break;
 
             case 'friend_request':
-                console.log('in');
-                console.log('senderID', data.sender_id);
-                console.log('userID', state.userId);
-                console.log('targetID', data.target_id);
-                console.log('state', state);
-                
                 if (String(data.target_id) === String(state.userId)) {
                     console.log("🔄 Actualisation de la liste d'amis !");
                     await loadFriendsList();
@@ -65,7 +76,6 @@ export function connectWS() {
                 break;
 
             case 'friend_remove':
-                console.log("💔 Ami supprimé, actualisation !");
                 if (String(data.sender_id) === String(state.userId) || String(data.target_id) === String(state.userId)) {
                     console.log("💔 Ami supprimé, actualisation !");
                     await loadFriendsList();

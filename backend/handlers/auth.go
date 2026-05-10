@@ -6,6 +6,7 @@ import (
 	"forum-certif/backend/utils"
 	"net/http"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -22,6 +23,14 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"message": "Données invalides"})
+			return
+		}
+
+		if !isPasswordStrong(user.Password) {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"message": "Le mot de passe doit contenir au moins 8 caractères, une majuscule, un chiffre et un caractère spécial.",
+			})
 			return
 		}
 
@@ -51,9 +60,8 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 			json.NewEncoder(w).Encode(map[string]string{"message": "Erreur serveur (pseudo)"})
 			return
 		}
-		// ------------------------------------------
 
-		// La suite reste identique (Hachage du mot de passe et Insertion)
+		// Hachage du mot de passe
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -121,7 +129,8 @@ func LoginHandler(db *sql.DB) http.HandlerFunc {
 			Expires:  expiresAt,
 			Path:     "/",
 			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
 		})
 
 		json.NewEncoder(w).Encode(map[string]string{
@@ -145,6 +154,8 @@ func LogoutHandler(db *sql.DB) http.HandlerFunc {
 			Path:     "/",
 			Expires:  time.Now().Add(-1 * time.Hour),
 			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
 		})
 
 		w.WriteHeader(http.StatusOK)
@@ -162,7 +173,12 @@ func MeHandler(db *sql.DB) http.HandlerFunc {
 
 		var id, nickname, avatar string
 
-		query := `SELECT u.id, u.nickname, u.avatar FROM users u JOIN sessions s ON u.id = s.user_id WHERE s.id = ?`
+		query := `
+		SELECT u.id, u.nickname, u.avatar 
+		FROM users u 
+		JOIN sessions s ON u.id = s.user_id 
+		WHERE s.id = ? AND s.expires_at > CURRENT_TIMESTAMP
+	`
 
 		err = db.QueryRow(query, cookie.Value).Scan(&id, &nickname, &avatar)
 		if err != nil {
@@ -178,4 +194,25 @@ func MeHandler(db *sql.DB) http.HandlerFunc {
 			"avatar":   avatar,
 		})
 	}
+}
+
+func isPasswordStrong(pwd string) bool {
+	if len(pwd) < 8 {
+		return false
+	}
+	hasUpper := false
+	hasNumber := false
+	hasSpecial := false
+	for _, char := range pwd {
+		if unicode.IsUpper(char) {
+			hasUpper = true
+		}
+		if unicode.IsNumber(char) {
+			hasNumber = true
+		}
+		if !unicode.IsLetter(char) && !unicode.IsDigit(char) {
+			hasSpecial = true
+		}
+	}
+	return hasUpper && hasNumber && hasSpecial
 }

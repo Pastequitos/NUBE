@@ -3,6 +3,7 @@ import { loadComponent, updateAllAvatarsInDOM } from './utils.js';
 import { notify } from './notifications.js';
 import { openCropper } from './cropper.js';
 import { state } from './state.js';
+import { handleLogout } from './auth.js';
 
 export async function openSettings() {
     const settingsContainer = document.getElementById('settings');
@@ -31,7 +32,8 @@ export async function openSettings() {
     const avatarInput = document.getElementById('settingsAvatarInput');
     const avatarPreview = document.getElementById('settingsAvatarPreview');
     const saveBtn = document.getElementById('saveSettingsBtn');
-    const bioInput = document.getElementById('settingsBioInput'); 
+    const bioInput = document.getElementById('settingsBioInput');
+    const logoutBtn = document.getElementById('logoutBtn');
     
     let avatarBase64 = null;
 
@@ -136,6 +138,11 @@ export async function openSettings() {
                 saveBtn.innerText = "Enregistrer";
                 saveBtn.disabled = false;
             }
+        });
+    }
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            handleLogout(); // Ferme le socket, nettoie l'état et redirige vers la page de connexion
         });
     }
 }

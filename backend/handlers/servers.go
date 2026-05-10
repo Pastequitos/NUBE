@@ -3,11 +3,12 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/google/uuid"
 	"net/http"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
-// --- CRÉATION D'UN SALON ---
 func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -15,7 +16,6 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// 1. Vérification de la session
 		cookie, err := r.Cookie("session_token")
 		if err != nil {
 			http.Error(w, "Non autorisé", http.StatusUnauthorized)
@@ -29,13 +29,18 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// 2. Décodage de la requête
 		var req struct {
 			Name  string `json:"name"`
 			Color string `json:"color"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
-			http.Error(w, "Nom du serveur requis", http.StatusBadRequest)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Requête invalide", http.StatusBadRequest)
+			return
+		}
+
+		req.Name = strings.TrimSpace(req.Name)
+		if req.Name == "" || len(req.Name) > 50 {
+			http.Error(w, "Nom du serveur invalide (1 à 50 caractères maximum)", http.StatusBadRequest)
 			return
 		}
 
@@ -43,7 +48,6 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 			req.Color = "#5865F2"
 		}
 
-		// 3. Début de la transaction pour garantir l'intégrité des données
 		tx, err := db.Begin()
 		if err != nil {
 			http.Error(w, "Erreur interne", http.StatusInternalServerError)
@@ -52,7 +56,6 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 
 		serverID := uuid.New().String()
 
-		// A. Insertion du serveur
 		_, err = tx.Exec(`INSERT INTO servers (id, name, owner_id, color) VALUES (?, ?, ?, ?)`,
 			serverID, req.Name, userID, req.Color)
 		if err != nil {
@@ -61,7 +64,6 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// B. Insertion du créateur comme premier membre
 		_, err = tx.Exec(`INSERT INTO server_members (server_id, user_id) VALUES (?, ?)`,
 			serverID, userID)
 		if err != nil {
@@ -70,13 +72,11 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		// C. Validation finale de la transaction
 		if err := tx.Commit(); err != nil {
 			http.Error(w, "Erreur lors de la validation des données", http.StatusInternalServerError)
 			return
 		}
 
-		// 4. Réponse JSON complète pour permettre l'auto-switch au frontend
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]string{
@@ -87,7 +87,6 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// --- LECTURE DES SALONS ---
 type ServerResponse struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
@@ -137,58 +136,57 @@ func GetServersHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 func GetServerMembersHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        serverID := r.URL.Query().Get("server_id")
-        if serverID == "" {
-            http.Error(w, "ID serveur manquant", http.StatusBadRequest)
-            return
-        }
-        onlineUsers := hub.GetOnlineUserIDs()
+	return func(w http.ResponseWriter, r *http.Request) {
+		serverID := r.URL.Query().Get("server_id")
+		if serverID == "" {
+			http.Error(w, "ID serveur manquant", http.StatusBadRequest)
+			return
+		}
+		onlineUsers := hub.GetOnlineUserIDs()
 
-        // 🌟 1. Ajout de u.avatar dans le SELECT
-        rows, err := db.Query(`
+		rows, err := db.Query(`
             SELECT u.id, u.nickname, u.avatar 
             FROM users u 
             JOIN server_members sm ON u.id = sm.user_id 
             WHERE sm.server_id = ?`, serverID)
-        if err != nil {
-            http.Error(w, "Erreur BDD", http.StatusInternalServerError)
-            return
-        }
-        defer rows.Close()
+		if err != nil {
+			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
 
-        var members []map[string]interface{}
-        for rows.Next() {
-            var id, nickname string
-            var avatar sql.NullString
-            
-            if err := rows.Scan(&id, &nickname, &avatar); err != nil {
-                continue
-            }
+		var members []map[string]interface{}
+		for rows.Next() {
+			var id, nickname string
+			var avatar sql.NullString
 
-            status := "offline"
-            if onlineUsers[id] {
-                status = "online"
-            }
+			if err := rows.Scan(&id, &nickname, &avatar); err != nil {
+				continue
+			}
 
-            finalAvatar := ""
-            if avatar.Valid {
-                finalAvatar = avatar.String
-            }
+			status := "offline"
+			if onlineUsers[id] {
+				status = "online"
+			}
 
-            members = append(members, map[string]interface{}{
-                "id":       id,
-                "nickname": nickname,
-                "status":   status,
-                "avatar":   finalAvatar, 
-            })
-        }
+			finalAvatar := ""
+			if avatar.Valid {
+				finalAvatar = avatar.String
+			}
 
-        if members == nil {
-            members = []map[string]interface{}{}
-        }
+			members = append(members, map[string]interface{}{
+				"id":       id,
+				"nickname": nickname,
+				"status":   status,
+				"avatar":   finalAvatar,
+			})
+		}
 
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(members)
-    }
+		if members == nil {
+			members = []map[string]interface{}{}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(members)
+	}
 }

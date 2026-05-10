@@ -47,12 +47,13 @@ func main() {
 	})
 
 	// Routes API Auth
-	mux.HandleFunc("/api/register", handlers.RegisterHandler(db))
-	mux.HandleFunc("/api/login", handlers.LoginHandler(db))
+	mux.Handle("/api/register", handlers.RateLimitMiddleware(handlers.RegisterHandler(db)))
+	mux.Handle("/api/login", handlers.RateLimitMiddleware(handlers.LoginHandler(db)))
 	mux.HandleFunc("/api/logout", handlers.LogoutHandler(db))
 	mux.HandleFunc("/api/me", handlers.MeHandler(db))
 
 	mux.HandleFunc("/api/messages", handlers.GetMessagesHandler(db))
+	mux.HandleFunc("/api/messages/private", handlers.GetPrivateMessagesHandler(db))
 	mux.HandleFunc("/api/servers", handlers.CreateServerHandler(db))
 	mux.HandleFunc("/api/my-servers", handlers.GetServersHandler(db))
 	mux.HandleFunc("/api/invites", handlers.CreateInviteHandler(db))
@@ -82,8 +83,10 @@ func main() {
 
 	fmt.Println("🚀 Serveur prêt sur http://localhost:" + port)
 
-	// Lancement du serveur avec le logger
-	err = http.ListenAndServe(":"+port, logger(mux))
+	// 🌟 LA MAGIE OPÈRE ICI :
+	// On enveloppe TOUT le mux avec ton SecurityMiddleware,
+	// puis on l'enveloppe avec ton logger !
+	err = http.ListenAndServe(":"+port, logger(handlers.SecurityMiddleware(mux)))
 	if err != nil {
 		log.Fatal("Erreur Serveur:", err)
 	}

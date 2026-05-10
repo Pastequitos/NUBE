@@ -5,6 +5,7 @@ import { renderHome } from './main.js';
 
 // 🌟 1. ON IMPORTE LE NOUVEAU SYSTÈME ICI
 import { notify } from './notifications.js';
+import { addLiquidGlassElement } from './liquidGlass.js';
 
 export function router(page) {
     switch (page) {
@@ -22,6 +23,41 @@ export async function renderRegister() {
     if (!app) return;
 
     app.innerHTML = await loadComponent('/frontend/components/register.html');
+
+    // 🌟 LE NOUVEAU CODE MAGIQUE POUR LE REGISTER 🌟
+    setTimeout(() => {
+        // La grande boîte principale
+        addLiquidGlassElement('registerGlassBox', {
+            radius: 38.0,
+            bezel: 38.0,
+            thickness: 50.0,
+            ior: 2.2,
+            brightness: 1.1,
+            tint: 0.05,
+            interactive: false
+        });
+
+        // Les 3 inputs
+        addLiquidGlassElement("nickname", {
+            radius: 26.0, bezel: 26.0, thickness: 20.0, ior: 2.2, brightness: 1.1, tint: 0.05, interactive: true
+        });
+        addLiquidGlassElement("email", {
+            radius: 26.0, bezel: 26.0, thickness: 20.0, ior: 2.2, brightness: 1.1, tint: 0.05, interactive: true
+        });
+        addLiquidGlassElement("password", {
+            radius: 26.0, bezel: 26.0, thickness: 20.0, ior: 2.2, brightness: 1.1, tint: 0.05, interactive: true
+        });
+
+        // Le bouton de validation
+        addLiquidGlassElement("registerBtn", {
+            radius: 26.0, bezel: 26.0, thickness: 20.0, ior: 2.2, brightness: 1.1, tint: 0.05, interactive: true
+        });
+
+        // Le lien de retour
+        addLiquidGlassElement("goToLogin", {
+            radius: 25.0, bezel: 25.0, thickness: 20.0, ior: 2.2, brightness: 1.1, tint: 0.05, interactive: true
+        });
+    }, 10);
 
     document.getElementById('regForm').onsubmit = async (e) => {
         e.preventDefault();
@@ -55,6 +91,55 @@ export async function renderLogin() {
     if (!app) return;
 
     app.innerHTML = await loadComponent('/frontend/components/login.html');
+
+    setTimeout(() => {
+        addLiquidGlassElement('loginGlassBox', {
+            radius: 38.0,       // Des bords bien arrondis
+            bezel: 38.0,
+            thickness: 50.0,    // Un beau bloc de verre épais
+            ior: 2.2,           // Une bonne distorsion
+            brightness: 1.1,
+            tint: 0.05,
+            interactive: false  // Et hop, interactif au survol !
+        });
+
+        addLiquidGlassElement("loginInput", {
+            radius: 26.0,
+            bezel: 26.0,
+            thickness: 20.0,
+            ior: 2.2,
+            brightness: 1.1,
+            tint: 0.05,
+            interactive: true
+        })
+        addLiquidGlassElement("passInput", {
+            radius: 26.0,
+            bezel: 26.0,
+            thickness: 20.0,
+            ior: 2.2,
+            brightness: 1.1,
+            tint: 0.05,
+            interactive: true
+        })
+        addLiquidGlassElement("loginBtn", {
+            radius: 26.0,
+            bezel: 26.0,
+            thickness: 20.0,
+            ior: 2.2,
+            brightness: 1.1,
+            tint: 0.05,
+            interactive: true
+        })
+        addLiquidGlassElement("newAccount", {
+            radius: 25.0,
+            bezel: 25.0,
+            thickness: 20.0,
+            ior: 2.2,
+            brightness: 1.1,
+            tint: 0.05,
+            interactive: true
+        })
+    }, 10);
 
     const form = document.getElementById('loginForm');
     if (form) {

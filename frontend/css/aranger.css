@@ -228,8 +228,7 @@
     backdrop-filter: blur(var(--backdropIntensity));
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     border-radius: var(--borderRadius);
-    padding: 10px;
-    margin: var(--petitPadding);
+    padding: var(--petitPadding);
     display: flex;
     align-items: center;
     justify-content: space-between;

@@ -7,11 +7,12 @@ import (
 
 // Message définit la structure des messages circulant dans le Hub et l'API
 type Message struct {
-	Type        string `json:"type"`   // "public" ou "private"
-	Sender      string `json:"sender"` // Nickname du posteur
+	Type        string `json:"type"` // "public" ou "private"
+	Sender      string `json:"sender"`
 	Content     string `json:"content"`
-	ServerID    string `json:"server_id"`    // ID du serveur (anciennement channel_id)
-	MessageType string `json:"message_type"` // "user" ou "system"
+	ServerID    string `json:"server_id"`
+	ReceiverID  string `json:"receiver_id"` // 🌟 NOUVEAU
+	MessageType string `json:"message_type"`
 	CreatedAt   string `json:"created_at"`
 }
 
@@ -102,4 +103,25 @@ func (h *Hub) GetOnlineUserIDs() map[string]bool {
 		onlineMap[client.UserID] = true
 	}
 	return onlineMap
+}
+
+func (h *Hub) SendToUsers(message []byte, userIDs ...string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	targets := make(map[string]bool)
+	for _, id := range userIDs {
+		targets[id] = true
+	}
+
+	for client := range h.Clients {
+		if targets[client.UserID] {
+			select {
+			case client.Send <- message:
+			default:
+				close(client.Send)
+				delete(h.Clients, client)
+			}
+		}
+	}
 }

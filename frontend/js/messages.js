@@ -1,12 +1,15 @@
 // messages.js
-import { DEFAULT_AVATAR } from './utils.js';
-
+import { state } from './state.js';
+import { DEFAULT_AVATAR, escapeHTML } from './utils.js';
+import { notify } from './notifications.js';
+import { blockChatTemporarily } from './chat.js';
 
 let lastMessageInfo = {
     sender: null,
     date: null,
     bodyElement: null
 };
+
 
 export function formatTime(dateString) {
     if (!dateString) return "";
@@ -30,67 +33,79 @@ export function formatTime(dateString) {
     }
 }
 
-// N'oublie pas d'importer l'avatar par défaut !
-
 export function appendMessage(msg) {
     const chatContainer = document.getElementById('chatContainer');
     if (!chatContainer) return;
 
     // --- 1. GESTION DES MESSAGES SYSTÈME ---
     if (msg.message_type === 'system') {
-        const systemElement = document.createElement('div');
-        systemElement.classList.add('message-item', 'system-join-message');
 
-        systemElement.innerHTML = `
+        // 🌟 NOUVEAU : Interception des messages Anti-Spam
+        if (msg.message_type === 'system') {
+            if (msg.content.includes('Calmos')) {
+                notify.error(msg.content);
+                blockChatTemporarily(10000); // 🌟 Bloque pendant 10 secondes (10000ms)
+                return;
+            }
+        }
+
+            const systemElement = document.createElement('div');
+            systemElement.classList.add('message-item', 'system-join-message');
+
+            // 🛡️ Sécurité : On échappe aussi les messages système
+            systemElement.innerHTML = `
             <div class="system-icon">✨</div>
             <div class="message-body">
-                <span class="system-content">${msg.content}</span>
+                <span class="system-content">${escapeHTML(msg.content)}</span>
                 <span class="message-time">${formatTime(msg.created_at)}</span>
             </div>
         `;
 
-        chatContainer.appendChild(systemElement);
+            chatContainer.appendChild(systemElement);
 
-        lastMessageInfo = { sender: null, date: null, bodyElement: null };
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        return;
-    }
+            lastMessageInfo = { sender: null, date: null, bodyElement: null };
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return;
+        }
 
-    // --- 2. GESTION DES MESSAGES UTILISATEURS ---
-    if (chatContainer.children.length === 0) {
-        lastMessageInfo = { sender: null, date: null, bodyElement: null };
-    }
+        // --- 2. GESTION DES MESSAGES UTILISATEURS ---
+        if (chatContainer.children.length === 0) {
+            lastMessageInfo = { sender: null, date: null, bodyElement: null };
+        }
 
-    const senderName = msg.sender ? msg.sender : 'Anonyme';
-    const currentDate = msg.created_at ? new Date(msg.created_at) : new Date();
-    const isSameSender = (lastMessageInfo.sender === senderName);
+        // 🛡️ Sécurité : On échappe le pseudo
+        const senderName = msg.sender ? escapeHTML(msg.sender) : 'Anonyme';
+        const currentDate = msg.created_at ? new Date(msg.created_at) : new Date();
+        const isSameSender = (lastMessageInfo.sender === senderName);
 
-    // 🌟 On vérifie si l'avatar est fourni, sinon on met celui par défaut
-    const avatarSrc = msg.avatar && msg.avatar !== "" ? msg.avatar : DEFAULT_AVATAR;
-    const senderId = msg.sender_id || ""; // Important pour la synchro temps réel
+        const avatarSrc = msg.avatar && msg.avatar !== "" ? msg.avatar : DEFAULT_AVATAR;
+        const senderId = msg.sender_id || "";
 
-    let isWithin10Mins = false;
-    if (lastMessageInfo.date) {
-        const diffMs = currentDate.getTime() - lastMessageInfo.date.getTime();
-        const diffMins = diffMs / (1000 * 60);
-        isWithin10Mins = (diffMins <= 10);
-    }
+        let isWithin10Mins = false;
+        if (lastMessageInfo.date) {
+            const diffMs = currentDate.getTime() - lastMessageInfo.date.getTime();
+            const diffMins = diffMs / (1000 * 60);
+            isWithin10Mins = (diffMins <= 10);
+        }
 
-    if (isSameSender && isWithin10Mins && lastMessageInfo.bodyElement) {
-        const newTextElement = document.createElement('div');
-        newTextElement.classList.add('message-text');
-        newTextElement.innerHTML = msg.content;
-        newTextElement.style.marginTop = "4px";
+        if (isSameSender && isWithin10Mins && lastMessageInfo.bodyElement) {
+            const newTextElement = document.createElement('div');
+            newTextElement.classList.add('message-text');
 
-        lastMessageInfo.bodyElement.appendChild(newTextElement);
-        lastMessageInfo.date = currentDate;
-    } else {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message-item');
+            // 🛡️ Sécurité : On échappe le contenu du message ajouté
+            newTextElement.innerHTML = escapeHTML(msg.content);
+            newTextElement.style.marginTop = "4px";
 
-        const time = formatTime(msg.created_at);
+            lastMessageInfo.bodyElement.appendChild(newTextElement);
+            lastMessageInfo.date = currentDate;
+        } else {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message-item');
 
-        messageElement.innerHTML = `
+            const time = formatTime(msg.created_at);
+
+            // 🛡️ Sécurité : On échappe le contenu dans le bloc complet
+            messageElement.innerHTML = `
             <div class="message-avatar">
                 <img src="${avatarSrc}" data-user-id="${senderId}">
             </div>
@@ -100,42 +115,76 @@ export function appendMessage(msg) {
                     <span class="message-time">${time}</span>
                 </div>
                 <div class="message-text">
-                    ${msg.content}
+                    ${escapeHTML(msg.content)}
                 </div>
             </div>
         `;
 
-        chatContainer.appendChild(messageElement);
+            chatContainer.appendChild(messageElement);
 
-        lastMessageInfo = {
-            sender: senderName,
-            date: currentDate,
-            bodyElement: messageElement.querySelector('.message-body')
-        };
-    }
-
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-export async function loadServerHistory(serverId) {
-    const chatContainer = document.getElementById('chatContainer');
-    if (!chatContainer) return;
-
-    chatContainer.innerHTML = '';
-
-    try {
-        const response = await fetch(`/api/messages?server_id=${serverId}`);
-        if (response.ok) {
-            const messages = await response.json();
-
-            if (messages && messages.length > 0) {
-                messages.forEach(msg => appendMessage(msg));
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            } else {
-                chatContainer.innerHTML = '<div class="chat-welcome">C\'est le début du serveur !</div>';
-            }
+            lastMessageInfo = {
+                sender: senderName,
+                date: currentDate,
+                bodyElement: messageElement.querySelector('.message-body')
+            };
         }
-    } catch (err) {
-        console.error("Erreur lors du chargement de l'historique :", err);
+
+        chatContainer.scrollTop = chatContainer.scrollHeight;
     }
-}
+
+    export async function loadServerHistory(serverId) {
+        const chatContainer = document.getElementById('chatContainer');
+        if (!chatContainer) return;
+
+        chatContainer.innerHTML = '';
+
+        try {
+            const response = await fetch(`/api/messages?server_id=${serverId}`);
+            if (response.ok) {
+                const messages = await response.json();
+
+                if (messages && messages.length > 0) {
+                    messages.forEach(msg => appendMessage(msg));
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                } else {
+                    chatContainer.innerHTML = '<div class="chat-welcome">C\'est le début du serveur !</div>';
+                }
+            }
+        } catch (err) {
+            console.error("Erreur lors du chargement de l'historique :", err);
+        }
+    }
+
+    export async function loadPrivateHistory(userId, nickname) {
+        const chatContainer = document.getElementById('chatContainer');
+        const chatHeader = document.getElementById('currentServerName');
+
+        if (!chatContainer) return;
+
+        state.activeServerId = null;
+        state.activeDmUserId = userId;
+
+        if (chatHeader) {
+            // 🛡️ Sécurité : Même le titre du chat est échappé au cas où le pseudo serait malveillant
+            chatHeader.innerText = `@ ${escapeHTML(nickname)}`;
+        }
+
+        chatContainer.innerHTML = '';
+
+        try {
+            const response = await fetch(`/api/messages/private?user_id=${userId}`);
+            if (response.ok) {
+                const messages = await response.json();
+
+                if (messages && messages.length > 0) {
+                    messages.forEach(msg => appendMessage(msg));
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                } else {
+                    // 🛡️ Sécurité : On échappe aussi le nickname dans le message de bienvenue
+                    chatContainer.innerHTML = `<div class="chat-welcome">C'est le début de votre conversation avec ${escapeHTML(nickname)} !</div>`;
+                }
+            }
+        } catch (err) {
+            console.error("Erreur lors du chargement de l'historique privé :", err);
+        }
+    }

@@ -235,14 +235,6 @@ p {
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        .contact-item:hover {
-            background-color: #35373c;
-        }
-
-        .contact-item.active {
-            background-color: #3f4147;
-        }
-
         .contact-info {
             display: flex;
             flex-direction: column;
@@ -395,25 +387,37 @@ p {
 
         }
 
-        .settings-input:focus,
-        .settings-textarea:focus {
-            outline: none;
-            border-color: #5865F2;
-        }
+        .settings-actions {
+            display: flex;
+            flex-direction: column;
+            gap: var(--padding);
 
-        .settings-save-btn {
-            background-color: var(--glass);
-            border: 1px solid var(--glassBorder);
-            border-radius: var(--petitBorderRadius);
-            color: white;
-            padding: var(--padding);
-            cursor: pointer;
-            transition: all 0.2s var(--cubic);
-            width: 100%;
-        }
+            .settings-logout-btn {
+                background-color: var(--glass);
+                border: 1px solid var(--glassBorder);
+                border-radius: var(--petitBorderRadius);
+                color: white;
+                padding: var(--padding);
+                cursor: pointer;
+                transition: all 0.2s var(--cubic);
+                width: 100%;
+            }
 
-        .settings-save-btn:hover {
-            background-color: var(--glassHover);
+            
+            .settings-save-btn {
+                background-color: var(--glass);
+                border: 1px solid var(--glassBorder);
+                border-radius: var(--petitBorderRadius);
+                color: white;
+                padding: var(--padding);
+                cursor: pointer;
+                transition: all 0.2s var(--cubic);
+                width: 100%;
+            }
+            
+            .settings-save-btn:hover {
+                background-color: var(--glassHover);
+            }
         }
 
         .custom-file-upload {
@@ -475,7 +479,7 @@ p {
     }
 
     100% {
-        height: 348px;
+        height: 420px;
         padding-bottom: var(--padding);
         padding-top: var(--padding);
     }
@@ -484,7 +488,7 @@ p {
 @keyframes closeSettings {
     0% {
         padding-top: var(--padding);
-        height: 348px;
+        height: 420px;
     }
 
     100% {
@@ -562,6 +566,7 @@ p {
                     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                     border: 1px solid var(--glassBorder);
                     padding: unset;
+                    border-radius: var(--borderRadius);
                 }
 
                 #messageInput {
@@ -572,7 +577,7 @@ p {
                     outline: none;
                     width: 100%;
                     box-sizing: border-box;
-                    padding: 24px;
+                    padding: 28px;
                     color: white;
                     font-size: 14px;
                     font-family: inherit;
@@ -581,11 +586,16 @@ p {
                     min-height: 66px;
                     max-height: 150px;
                     overflow-y: auto;
+
+                    word-wrap: break-word;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                    white-space: pre-wrap;
                 }
 
 
                 #sendBtnWrapper {
-                    height: 72px;
+                    height: 80px;
                     width: 80px;
 
                     #sendMessage {
@@ -754,7 +764,7 @@ p {
 
     .modal-content {
         background-color: var(--glass);
-        padding: var(--padding);
+        padding: calc(var(--padding)*2);
         border-radius: var(--borderRadius);
         display: flex;
         flex-direction: column;
@@ -763,7 +773,7 @@ p {
         backdrop-filter: blur(var(--backdropIntensity));
         border: 1px solid var(--glassBorder);
         margin: var(--petitPadding);
-        animation: openModalContent 1s .5s cubic-bezier(.1, 0, 0, 1) forwards;
+        animation: openModalContent .5s cubic-bezier(.1, 0, 0, 1) forwards;
 
         input {
             border: none;
@@ -873,7 +883,7 @@ p {
 }
 
 .glassContainer {
-/*     background-color: var(--glass); */
+    /*     background-color: var(--glass); */
     border: 1px solid var(--glassBorder);
     border-radius: var(--borderRadius);
     height: 100%;
@@ -928,7 +938,7 @@ canvas {
     background-color: var(--glass);
     border-radius: var(--borderRadius);
     border: 1px solid var(--glassBorder);
-    backdrop-filter: blur(var(--backdropIntensity));
+    backdrop-filter: blur(3px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
@@ -936,6 +946,7 @@ canvas {
     animation: notifSlideIn 0.5s ease forwards;
     font-size: 12px;
 }
+
 
 .notif-success {
     &::before {
@@ -991,25 +1002,21 @@ canvas {
 
 @keyframes notifSlideIn {
     from {
-        transform: translateX(100%);
-        opacity: 0;
+        transform: translateX(115%);
     }
 
     to {
         transform: translateX(0);
-        opacity: 1;
     }
 }
 
 @keyframes notifFadeOut {
     from {
         transform: translateX(0);
-        opacity: 1;
     }
 
     to {
-        transform: translateX(10px);
-        opacity: 0;
+        transform: translateX(115%);
     }
 }
 

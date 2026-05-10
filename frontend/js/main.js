@@ -14,6 +14,9 @@ import { initLiquidGlassEngine, addLiquidGlassElement } from './liquidGlass.js';
 
 export const app = document.getElementById('app');
 
+// URL du fond d'écran global
+const appBackgroundImage = "https://photos.peopleimages.com/picture/202404/3047549-bright-fluid-and-liquid-with-neon-for-wallpaper-or-abstract-texture-water-or-design-or-futuristic.-vivid-pattern-and-energy-or-matter-with-fractal-for-background-creative-or-art-with-technology-zoom_90.jpg";
+
 async function initGlobalComponents() {
     const globalDiv = document.createElement('div');
     globalDiv.id = 'global-components';
@@ -48,6 +51,7 @@ export async function renderHome() {
 }
 
 async function initApp() {
+    // Cette fonction ne se lance QUE si on est connecté (depuis renderHome)
     const appHTML = await loadComponent('/frontend/components/main.html');
     app.innerHTML = appHTML;
 
@@ -63,42 +67,43 @@ async function initApp() {
         });
     }
 
-    const appBackgroundImage = "https://photos.peopleimages.com/picture/202404/3047549-bright-fluid-and-liquid-with-neon-for-wallpaper-or-abstract-texture-water-or-design-or-futuristic.-vivid-pattern-and-energy-or-matter-with-fractal-for-background-creative-or-art-with-technology-zoom_90.jpg";
+    // 🌟 2. On applique le verre aux divs du CHAT uniquement car elles viennent d'apparaître !
+    addLiquidGlassElement('chatGlassWrapper', {
+        radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
+    });
 
-    if (appBackgroundImage) {
-        // 1. Initialise le moteur global une seule fois
-        initLiquidGlassEngine(appBackgroundImage);
+    addLiquidGlassElement('userPanel', {
+        radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
+    });
 
-        // 2. On déclare les divs à transformer en verre, avec leurs paramètres propres
+    addLiquidGlassElement('contactContainer', {
+        radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
+    });
 
-        addLiquidGlassElement('chatGlassWrapper', {
-            radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
-        });
+    addLiquidGlassElement('userContainer', {
+        radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
+    });
 
-        addLiquidGlassElement('userPanel', {
-            radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
-        });
+    addLiquidGlassElement('messageInputWrapper', {
+        radius: 38.0, bezel: 38.0, thickness: 20.0, ior: 2.0, brightness: 0.6, interactive: true
+    });
 
-        addLiquidGlassElement('contactContainer', {
-            radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
-        });
-
-        addLiquidGlassElement('userContainer', {
-            radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7
-        });
-
-        // L'input (on réduit un peu le rayon vu que c'est plus petit)
-        addLiquidGlassElement('messageInputWrapper', {
-            radius: 38.0, bezel: 12.0, thickness: 20.0, ior: 2.0, brightness: 0.6, interactive: true
-        });
-
-        // Le bouton send
-        addLiquidGlassElement('sendBtnWrapper', {
-            radius: 38.0, bezel: 8.0, thickness: 15.0, ior: 1.5, brightness: 0.8, interactive: true
-        });
-    }
+    addLiquidGlassElement('sendBtnWrapper', {
+        radius:38.0, bezel: 38.0, thickness: 15.0, ior: 1.5, brightness: 0.8, interactive: true
+    });
 }
 
-initGlobalComponents();
-checkAuth();
+// =====================================================================
+// 🚀 DÉMARRAGE GLOBAL DE L'APPLICATION (S'exécute tout de suite !)
+// =====================================================================
+
+// 1. Initialise le moteur de rendu 3D DES LE DEBUT, même sur la page de login !
+initLiquidGlassEngine(appBackgroundImage);
+
+// 2. Initialise les notifications
+initGlobalComponents().then(() => {
+    // 3. Vérifie l'authentification (qui redirigera vers login ou home)
+    checkAuth();
+});
+
 /* initCursorFollower(); */
