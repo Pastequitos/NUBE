@@ -93,6 +93,7 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 type ServerResponse struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
+	Avatar      string `json:"avatar"` // 🌟 Ajout du champ avatar
 	Color       string `json:"color"`
 	MemberCount int    `json:"member_count"`
 }
@@ -112,8 +113,9 @@ func GetServersHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		// 🌟 Mise à jour de la requête pour inclure s.avatar
 		query := `
-            SELECT s.id, s.name, s.color, 
+            SELECT s.id, s.name, s.avatar, s.color, 
                    (SELECT COUNT(*) FROM server_members WHERE server_id = s.id) as member_count
             FROM servers s 
             JOIN server_members sm ON s.id = sm.server_id 
@@ -129,7 +131,14 @@ func GetServersHandler(db *sql.DB) http.HandlerFunc {
 		var servers []ServerResponse
 		for rows.Next() {
 			var srv ServerResponse
-			if err := rows.Scan(&srv.ID, &srv.Name, &srv.Color, &srv.MemberCount); err == nil {
+			var avatar sql.NullString // 🌟 Utilisation de NullString au cas où l'avatar est NULL
+
+			if err := rows.Scan(&srv.ID, &srv.Name, &avatar, &srv.Color, &srv.MemberCount); err == nil {
+				if avatar.Valid {
+					srv.Avatar = avatar.String
+				} else {
+					srv.Avatar = ""
+				}
 				servers = append(servers, srv)
 			}
 		}
@@ -138,6 +147,7 @@ func GetServersHandler(db *sql.DB) http.HandlerFunc {
 		json.NewEncoder(w).Encode(servers)
 	}
 }
+
 func GetServerMembersHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		serverID := r.URL.Query().Get("server_id")

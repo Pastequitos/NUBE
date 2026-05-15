@@ -14,10 +14,10 @@ export async function openSettings() {
         settingsContainer.classList.remove('open');
         settingsContainer.classList.add('close');
         
-/*         setTimeout(() => {
+        setTimeout(() => {
             settingsContainer.style.display = 'none';
             settingsContainer.innerHTML = ''; 
-        }, 300);  */
+        }, 300); 
         
         return; // On arrête la fonction ici car on vient de fermer
     }

@@ -5,31 +5,41 @@ import { updateAllAvatarsInDOM } from './utils.js';
 import { notify } from './notifications.js';
 
 export function connectWS() {
+    // 🛡️ BARRIÈRE 1 : Si l'utilisateur n'est pas loggé dans le state, on ne fait rien
+    if (!state.userId) {
+        console.log("🔌 WS : En attente d'authentification pour se connecter...");
+        return;
+    }
+
+    // Évite d'ouvrir plusieurs sockets si un est déjà en cours d'ouverture
+    if (state.socket && (state.socket.readyState === WebSocket.CONNECTING || state.socket.readyState === WebSocket.OPEN)) {
+        return;
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     state.socket = new WebSocket(`${protocol}://${window.location.host}/ws`);
 
+    state.socket.onopen = () => {
+        console.log("✅ WebSocket : Connecté avec succès");
+    };
+
     state.socket.onmessage = async (event) => {
         const data = JSON.parse(event.data);
-        console.log("📩 WebSocket received:", data);
+        // console.log("📩 WebSocket received:", data); // Optionnel : à commenter pour une console encore plus propre
 
         switch (data.type) {
-
             case 'system':
-                // 🌟 On intercepte les messages de mute pour ne pas les mettre dans le chat
                 if (data.content && data.content.includes("réduit au silence")) {
-                    blockChatTemporarily(true); 
-                    // Pas de appendMessage ici !
-                    return; 
+                    blockChatTemporarily(true);
+                    return;
                 }
                 appendMessage(data);
                 break;
 
             case 'mute_update':
-                // Mise à jour en direct via le signal de modération
                 if (data.server_id === state.activeServerId) {
                     blockChatTemporarily(data.is_muted, data.until);
                 }
-
                 if (data.is_muted) {
                     notify.error("🔇 Vous avez été réduit au silence par un modérateur.", 6000);
                 } else {
@@ -106,6 +116,12 @@ export function connectWS() {
                 }
                 break;
 
+            case 'friend_accept':
+                if (String(data.sender_id) === String(state.userId) || String(data.target_id) === String(state.userId)) {
+                    await loadFriendsList();
+                }
+                break;
+
             case 'avatar_update':
                 updateAllAvatarsInDOM(data.user_id, data.avatar);
                 break;
@@ -116,5 +132,19 @@ export function connectWS() {
         }
     };
 
-    state.socket.onclose = () => setTimeout(connectWS, 3000);
+    state.socket.onclose = (event) => {
+        // 🛡️ BARRIÈRE 2 : On ne reconnecte QUE si l'utilisateur est toujours censé être là
+        // Si le code est 1000, c'est une déconnexion volontaire (logout)
+        if (state.userId && event.code !== 1000) {
+            console.log("🔄 WS : Connexion perdue. Tentative de reconnexion dans 3s...");
+            setTimeout(connectWS, 3000);
+        } else {
+            console.log("🔌 WS : Déconnecté (normal ou non loggé).");
+        }
+    };
+
+    state.socket.onerror = () => {
+        // On ne fait rien ici, on laisse le onclose gérer la suite sans polluer la console
+        state.socket.close();
+    };
 }

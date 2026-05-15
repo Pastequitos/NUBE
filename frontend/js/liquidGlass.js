@@ -24,7 +24,7 @@ export function initLiquidGlassEngine(backgroundImageUrl) {
         left: '0',
         width: '100vw',
         height: '100vh',
-        zIndex: '0', // Reste sous l'interface (z-index 1) mais au-dessus du fond
+        zIndex: '0',
         pointerEvents: 'none'
     });
     document.body.appendChild(canvas);

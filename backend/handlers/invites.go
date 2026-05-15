@@ -48,10 +48,12 @@ func CreateInviteHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		expiresAt := time.Now().Add(24 * time.Hour) // 🌟 Définit l'expiration à +24h
+
 		token := uuid.New().String()[:8]
 
-		query := `INSERT INTO invites (token, server_id, creator_id) VALUES (?, ?, ?)`
-		_, err = db.Exec(query, token, req.ServerID, userID)
+		query := `INSERT INTO invites (token, server_id, creator_id, expires_at) VALUES (?, ?, ?, ?)`
+		_, err = db.Exec(query, token, req.ServerID, userID, expiresAt)
 		if err != nil {
 			http.Error(w, "Erreur lors de la création de l'invitation", http.StatusInternalServerError)
 			return
@@ -104,15 +106,22 @@ func JoinServerHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 			token = parts[len(parts)-1]
 		}
 
-		// 3. Infos Serveur
 		var serverID, serverName string
+		var expiresAt time.Time
+
 		err = db.QueryRow(`
-            SELECT i.server_id, s.name 
-            FROM invites i 
-            JOIN servers s ON i.server_id = s.id 
-            WHERE i.token = ?`, token).Scan(&serverID, &serverName)
+			SELECT i.server_id, s.name, i.expires_at 
+			FROM invites i 
+			JOIN servers s ON i.server_id = s.id 
+			WHERE i.token = ?`, token).Scan(&serverID, &serverName, &expiresAt)
+
 		if err != nil {
-			http.Error(w, "Invitation invalide ou expirée", http.StatusNotFound)
+			http.Error(w, "Invitation invalide", http.StatusNotFound)
+			return
+		}
+
+		if time.Now().After(expiresAt) {
+			http.Error(w, "Cette invitation a expiré", http.StatusGone)
 			return
 		}
 

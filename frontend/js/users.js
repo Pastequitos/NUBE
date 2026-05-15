@@ -2,74 +2,88 @@
 import { addLiquidGlassElement } from './liquidGlass.js';
 import { loadPrivateHistory } from './messages.js';
 import { state } from './state.js';
-import { loadComponent, DEFAULT_AVATAR, escapeHTML } from './utils.js'; // 🌟 Ajout de escapeHTML
+import { loadComponent, DEFAULT_AVATAR } from './utils.js';
 
 let isLoadingFriends = false;
+
+let currentMembersRequestId = 0;
 
 export async function loadServerMembers(serverId) {
     const userContainer = document.getElementById('userContainer');
     if (!userContainer) return;
 
     const container = userContainer.querySelector('.glassContainer');
+    if (!container) return;
 
-    container.style.background = 'transparent';
-    container.style.boxShadow = 'none';
-    container.style.border = 'none';
+    const requestId = ++currentMembersRequestId;
 
-    container.innerHTML = '';
     container.innerHTML = '<div class="user-list-header sectionTitle">Membres</div>';
 
     try {
         const templateHtml = await loadComponent('/frontend/components/userContainer/userList.html');
-        const parser = new DOMParser();
-
+        
         const response = await fetch(`/api/server-members?server_id=${serverId}`);
-        if (response.ok) {
-            const members = await response.json();
+        if (!response.ok) return;
 
-            members.sort((a, b) => (a.status === 'online' ? -1 : 1));
+        const members = await response.json();
 
-            members.forEach(member => {
-                const doc = parser.parseFromString(templateHtml, 'text/html');
-                const userItem = doc.querySelector('.user-item');
-
-                const uniqueId = `member-glass-${member.id}`;
-                userItem.id = uniqueId;
-                userItem.dataset.id = member.id;
-
-                userItem.classList.remove('online', 'offline');
-                userItem.classList.add(member.status);
-
-                userItem.querySelector('.user-nickname').innerText = member.nickname;
-
-                const avatarSrc = member.avatar && member.avatar !== "" ? member.avatar : DEFAULT_AVATAR;
-                const imgElement = userItem.querySelector('.user-avatar-small');
-                if (imgElement) {
-                    imgElement.src = avatarSrc;
-                    imgElement.setAttribute('data-user-id', member.id);
-                }
-
-                userItem.onclick = () => openUserProfile(member.id, member.nickname, avatarSrc);
-
-                userItem.style.border = '1px solid rgba(255, 255, 255, 0.15)';
-                userItem.style.position = 'relative';
-
-                Array.from(userItem.children).forEach(child => {
-                    child.style.position = 'relative';
-                    child.style.zIndex = '1';
-                });
-
-                container.appendChild(userItem);
-
-                addLiquidGlassElement(uniqueId, {
-                    radius: 28.0,
-                    bezel: 28.0,
-                    thickness: 25.0,
-                    ior: 1.8,
-                    interactive: true
-                });
-            });
+        if (requestId !== currentMembersRequestId) {
+            console.warn("🛑 Requête obsolète pour les membres ignorée.");
+            return;
         }
+
+        members.sort((a, b) => (a.status === 'online' ? -1 : 1));
+
+        const fragment = document.createDocumentFragment();
+
+        members.forEach(member => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = templateHtml.trim();
+            const userItem = tempDiv.firstElementChild;
+
+            const uniqueId = `member-glass-${member.id}`;
+            userItem.id = uniqueId;
+            userItem.dataset.id = member.id;
+
+            userItem.classList.remove('online', 'offline');
+            userItem.classList.add(member.status);
+
+            const nicknameEl = userItem.querySelector('.user-nickname');
+            if (nicknameEl) nicknameEl.innerText = member.nickname;
+
+            const avatarSrc = (member.avatar && member.avatar !== "") ? member.avatar : DEFAULT_AVATAR;
+            const imgElement = userItem.querySelector('.user-avatar-small');
+            if (imgElement) {
+                imgElement.src = avatarSrc;
+                imgElement.setAttribute('data-user-id', member.id);
+            }
+
+            userItem.onclick = () => openUserProfile(member.id, member.nickname, avatarSrc);
+
+            userItem.style.position = 'relative';
+            Array.from(userItem.children).forEach(child => {
+                child.style.position = 'relative';
+                child.style.zIndex = '1';
+            });
+
+            fragment.appendChild(userItem);
+
+            setTimeout(() => {
+                if (document.getElementById(uniqueId)) {
+                    addLiquidGlassElement(uniqueId, {
+                        radius: 28.0,
+                        bezel: 28.0,
+                        thickness: 25.0,
+                        ior: 1.8,
+                        interactive: true
+                    });
+                }
+            }, 50);
+        });
+
+        container.innerHTML = '<div class="user-list-header sectionTitle">Membres</div>';
+        container.appendChild(fragment);
+
     } catch (err) {
         console.error("Erreur chargement membres :", err);
     }
@@ -164,24 +178,24 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
     const dmBtn = document.getElementById('dmBtn'); 
 
     if (dmBtn) {
-        dmBtn.onclick = () => {
-            modalContainer.style.display = 'none'; 
-            loadPrivateHistory(userId, nickname); 
-
-            // 🌟 1. On prévient le serveur qu'on a lu les messages de cet ami
-            fetch('/api/users/mark-private-read', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ target_id: userId })
-            });
-
-            // 🌟 2. On supprime la pastille rouge si elle existe dans la liste d'amis
-            const friendItem = document.querySelector(`.friend-item[data-id="${userId}"]`);
-            if (friendItem) {
-                const badge = friendItem.querySelector('.unread-badge');
-                if (badge) badge.remove();
-            }
-        };
+        if (dmBtn) {
+            dmBtn.onclick = () => {
+                modalContainer.style.display = 'none'; 
+                loadPrivateHistory(userId, nickname, avatarSrc); 
+        
+                fetch('/api/users/mark-private-read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_id: userId })
+                });
+        
+                const friendItem = document.querySelector(`.friend-item[data-id="${userId}"]`);
+                if (friendItem) {
+                    const badge = friendItem.querySelector('.unread-badge');
+                    if (badge) badge.remove();
+                }
+            };
+        }
     }
 
     if (state.userId === String(userId)) {
@@ -393,9 +407,8 @@ export async function loadFriendsList() {
                 }
 
                 item.onclick = () => {
-                    loadPrivateHistory(friend.id, friend.nickname);
+                    loadPrivateHistory(friend.id, friend.nickname, avatarSrc); 
                     
-                    // 🌟 4. Effacement de la pastille + requête backend
                     const b = item.querySelector('.unread-badge');
                     if (b) b.remove();
                     

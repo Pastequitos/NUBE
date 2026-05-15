@@ -27,6 +27,8 @@ func main() {
 	}
 	defer db.Close()
 
+	database.StartGlobalCleaner(db)
+
 	// 2. Initialisation du Hub WebSocket
 	hub := handlers.NewHub()
 	go hub.Run()
