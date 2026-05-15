@@ -1,9 +1,8 @@
-// auth.js
+
 import { state } from './state.js';
 import { loadComponent } from './utils.js';
 import { renderHome } from './main.js';
 
-// 🌟 1. ON IMPORTE LE NOUVEAU SYSTÈME ICI
 import { notify } from './notifications.js';
 import { addLiquidGlassElement } from './liquidGlass.js';
 import { loadFriendsList } from './users.js';
@@ -25,9 +24,8 @@ export async function renderRegister() {
 
     app.innerHTML = await loadComponent('/frontend/components/register.html');
 
-    // 🌟 LE NOUVEAU CODE MAGIQUE POUR LE REGISTER 🌟
     setTimeout(() => {
-        // La grande boîte principale
+        
         addLiquidGlassElement('registerGlassBox', {
             radius: 38.0,
             bezel: 38.0,
@@ -38,7 +36,6 @@ export async function renderRegister() {
             interactive: false
         });
 
-        // Les 3 inputs
         addLiquidGlassElement("nickname", {
             radius: 26.0, bezel: 26.0, thickness: 20.0, ior: 2.2, brightness: 1.1, tint: 0.05, interactive: true
         });
@@ -49,12 +46,10 @@ export async function renderRegister() {
             radius: 26.0, bezel: 26.0, thickness: 20.0, ior: 2.2, brightness: 1.1, tint: 0.05, interactive: true
         });
 
-        // Le bouton de validation
         addLiquidGlassElement("registerBtn", {
             radius: 26.0, bezel: 26.0, thickness: 20.0, ior: 2.2, brightness: 1.1, tint: 0.05, interactive: true
         });
 
-        // Le lien de retour
         addLiquidGlassElement("goToLogin", {
             radius: 25.0, bezel: 25.0, thickness: 20.0, ior: 2.2, brightness: 1.1, tint: 0.05, interactive: true
         });
@@ -95,13 +90,13 @@ export async function renderLogin() {
 
     setTimeout(() => {
         addLiquidGlassElement('loginGlassBox', {
-            radius: 38.0,       // Des bords bien arrondis
+            radius: 38.0,       
             bezel: 38.0,
-            thickness: 50.0,    // Un beau bloc de verre épais
-            ior: 2.2,           // Une bonne distorsion
+            thickness: 50.0,    
+            ior: 2.2,           
             brightness: 1.1,
             tint: 0.05,
-            interactive: false  // Et hop, interactif au survol !
+            interactive: false  
         });
 
         addLiquidGlassElement("loginInput", {
@@ -195,29 +190,22 @@ export async function checkAuth() {
         const res = await fetch('/api/me');
         if (res.ok) {
             const data = await res.json();
-            
-            // 1. On remplit l'état global
+
             state.currentUser = data.nickname;
             state.userId = String(data.id);
             state.userAvatar = data.avatar;
 
-            // 2. On affiche la structure de la page Home
             await router('home'); 
 
-            // 🌟 3. ON CHARGE LES DONNÉES AVANT DE SÉLECTIONNER LE SALON
-            // On importe dynamiquement pour éviter les dépendances circulaires
             const { loadServers, selectServer } = await import('./server.js');
 
-            // On attend que les listes soient chargées et affichées dans le DOM
             await Promise.all([
                 loadServers(),
                 loadFriendsList()
             ]);
 
-            // 🌟 4. MAINTENANT ON RECONNECTE LE DERNIER SALON
             if (data.last_server_id) {
-                console.log(`🔄 Reconnexion à : ${data.last_server_id}`);
-                // Un petit délai pour s'assurer que le DOM est bien rendu par loadServers
+
                 setTimeout(() => {
                     selectServer(data.last_server_id);
                 }, 50);
@@ -227,7 +215,7 @@ export async function checkAuth() {
             router('login');
         }
     } catch (err) { 
-        console.error("Erreur checkAuth:", err);
+        
         router('login'); 
     }
 }

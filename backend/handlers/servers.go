@@ -1,11 +1,18 @@
 package handlers
 
 import (
+	"log"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"forum/backend/utils"
 
 	"github.com/google/uuid"
 )
@@ -13,20 +20,13 @@ import (
 func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
-		cookie, err := r.Cookie("session_token")
+		userID, err := utils.GetUserIDFromSession(r, db)
 		if err != nil {
-			http.Error(w, "Non autorisé", http.StatusUnauthorized)
-			return
-		}
-
-		var userID string
-		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&userID)
-		if err != nil {
-			http.Error(w, "Session invalide", http.StatusUnauthorized)
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
 			return
 		}
 
@@ -35,13 +35,13 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 			Color string `json:"color"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Requête invalide", http.StatusBadRequest)
+			utils.SendJSONError(w, "Requête invalide", http.StatusBadRequest)
 			return
 		}
 
 		req.Name = strings.TrimSpace(req.Name)
 		if req.Name == "" || len(req.Name) > 50 {
-			http.Error(w, "Nom du serveur invalide (1 à 50 caractères maximum)", http.StatusBadRequest)
+			utils.SendJSONError(w, "Nom du serveur invalide (1 à 50 caractères maximum)", http.StatusBadRequest)
 			return
 		}
 
@@ -51,32 +51,34 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 
 		tx, err := db.Begin()
 		if err != nil {
-			http.Error(w, "Erreur interne", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans CreateServerHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 
 		serverID := uuid.New().String()
 
-		// 1. Création du serveur
 		_, err = tx.Exec(`INSERT INTO servers (id, name, owner_id, color) VALUES (?, ?, ?, ?)`,
 			serverID, req.Name, userID, req.Color)
 		if err != nil {
 			tx.Rollback()
-			http.Error(w, "Erreur lors de la création du serveur", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans CreateServerHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 
-		// 🌟 2. Ajout du créateur en tant que membre AVEC LE RÔLE ADMIN
 		_, err = tx.Exec(`INSERT INTO server_members (server_id, user_id, role) VALUES (?, ?, 'admin')`,
 			serverID, userID)
 		if err != nil {
 			tx.Rollback()
-			http.Error(w, "Erreur lors de l'ajout du créateur aux membres", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans CreateServerHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 
 		if err := tx.Commit(); err != nil {
-			http.Error(w, "Erreur lors de la validation des données", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans CreateServerHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 
@@ -90,30 +92,20 @@ func CreateServerHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-type ServerResponse struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Avatar      string `json:"avatar"` // 🌟 Ajout du champ avatar
-	Color       string `json:"color"`
-	MemberCount int    `json:"member_count"`
-}
-
 func GetServersHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session_token")
-		if err != nil {
-			http.Error(w, "Non autorisé", http.StatusUnauthorized)
+		
+		if r.Method != http.MethodGet {
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
-		var userID string
-		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&userID)
+		userID, err := utils.GetUserIDFromSession(r, db)
 		if err != nil {
-			http.Error(w, "Session invalide", http.StatusUnauthorized)
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
 			return
 		}
 
-		// 🌟 Mise à jour de la requête pour inclure s.avatar
 		query := `
             SELECT s.id, s.name, s.avatar, s.color, 
                    (SELECT COUNT(*) FROM server_members WHERE server_id = s.id) as member_count
@@ -123,15 +115,16 @@ func GetServersHandler(db *sql.DB) http.HandlerFunc {
         `
 		rows, err := db.Query(query, userID)
 		if err != nil {
-			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans GetServersHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
 
-		var servers []ServerResponse
+		var servers []utils.ServerResponse
 		for rows.Next() {
-			var srv ServerResponse
-			var avatar sql.NullString // 🌟 Utilisation de NullString au cas où l'avatar est NULL
+			var srv utils.ServerResponse
+			var avatar sql.NullString
 
 			if err := rows.Scan(&srv.ID, &srv.Name, &avatar, &srv.Color, &srv.MemberCount); err == nil {
 				if avatar.Valid {
@@ -152,28 +145,29 @@ func GetServerMembersHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		serverID := r.URL.Query().Get("server_id")
 		if serverID == "" {
-			http.Error(w, "ID serveur manquant", http.StatusBadRequest)
+			utils.SendJSONError(w, "ID serveur manquant", http.StatusBadRequest)
 			return
 		}
 		onlineUsers := hub.GetOnlineUserIDs()
 
 		rows, err := db.Query(`
-            SELECT u.id, u.nickname, u.avatar 
+            SELECT u.id, u.nickname, u.avatar, sm.role
             FROM users u 
             JOIN server_members sm ON u.id = sm.user_id 
             WHERE sm.server_id = ?`, serverID)
 		if err != nil {
-			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans GetServerMembersHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
 
 		var members []map[string]interface{}
 		for rows.Next() {
-			var id, nickname string
+			var id, nickname, role string
 			var avatar sql.NullString
 
-			if err := rows.Scan(&id, &nickname, &avatar); err != nil {
+			if err := rows.Scan(&id, &nickname, &avatar, &role); err != nil {
 				continue
 			}
 
@@ -192,6 +186,7 @@ func GetServerMembersHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 				"nickname": nickname,
 				"status":   status,
 				"avatar":   finalAvatar,
+				"role":     role,
 			})
 		}
 
@@ -207,69 +202,100 @@ func GetServerMembersHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 func UpdateServerOverviewHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
-		// 1. Vérification de session
-		cookie, err := r.Cookie("session_token")
+		myID, err := utils.GetUserIDFromSession(r, db)
 		if err != nil {
-			http.Error(w, "Non connecté", http.StatusUnauthorized)
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
 			return
 		}
 
-		var myID string
-		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
-		if err != nil {
-			http.Error(w, "Session invalide", http.StatusUnauthorized)
-			return
-		}
-
-		// 2. Lecture des données envoyées par le JS (Max 200Ko pour protéger l'image)
 		r.Body = http.MaxBytesReader(w, r.Body, 200<<10)
 		var req struct {
 			ServerID string `json:"server_id"`
 			Name     string `json:"name"`
-			Avatar   string `json:"avatar"` // En Base64
+			Avatar   string `json:"avatar"` 
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Données invalides", http.StatusBadRequest)
+			utils.SendJSONError(w, "Données invalides", http.StatusBadRequest)
 			return
 		}
 
-		// 3. 🛡️ SÉCURITÉ : Suis-je le propriétaire ou un Admin ?
 		var role string
-		var ownerID string
 		err = db.QueryRow(`
-			SELECT sm.role, s.owner_id 
-			FROM server_members sm
-			JOIN servers s ON s.id = sm.server_id
-			WHERE sm.server_id = ? AND sm.user_id = ?`,
-			req.ServerID, myID).Scan(&role, &ownerID)
+            SELECT role 
+            FROM server_members
+            WHERE server_id = ? AND user_id = ?`,
+			req.ServerID, myID).Scan(&role)
 
-		if err != nil || (role != "admin" && ownerID != myID) {
-			http.Error(w, "Vous n'avez pas les droits pour modifier ce serveur", http.StatusForbidden)
+		if err != nil || role != "admin" {
+			utils.SendJSONError(w, "Accès refusé : Droits administrateur requis", http.StatusForbidden)
 			return
 		}
 
-		// 4. Mise à jour de la Base de Données
-		// On utilise COALESCE/NULLIF pour ne mettre à jour l'avatar que si on en envoie un nouveau
-		_, err = db.Exec(`
-			UPDATE servers 
-			SET name = ?, 
-			    avatar = COALESCE(NULLIF(?, ''), avatar)
-			WHERE id = ?`,
-			req.Name, req.Avatar, req.ServerID)
+		dbAvatarPath := ""
+		if req.Avatar != "" && strings.HasPrefix(req.Avatar, "data:image/") {
+
+			parts := strings.Split(req.Avatar, ",")
+			if len(parts) == 2 {
+				decodedData, err := base64.StdEncoding.DecodeString(parts[1])
+				if err == nil {
+					if err := utils.ValidateImageMimeType(decodedData); err != nil {
+						utils.SendJSONError(w, err.Error(), http.StatusBadRequest)
+						return
+					}
+
+					ext := ".png"
+					if strings.Contains(parts[0], "webp") {
+						ext = ".webp"
+					}
+					if strings.Contains(parts[0], "jpeg") {
+						ext = ".jpg"
+					}
+
+					uploadDir := "./uploads/serverAvatar"
+					os.MkdirAll(uploadDir, 0755)
+
+					fileName := fmt.Sprintf("server_%s_%d%s", req.ServerID, time.Now().Unix(), ext)
+					filePath := filepath.Join(uploadDir, fileName)
+
+					var oldAvatar sql.NullString
+					err = db.QueryRow("SELECT avatar FROM servers WHERE id = ?", req.ServerID).Scan(&oldAvatar)
+					if err == nil && oldAvatar.Valid && oldAvatar.String != "" {
+						oldPath := "." + oldAvatar.String
+						if strings.HasPrefix(oldPath, "./uploads/") {
+							os.Remove(oldPath)
+						}
+					}
+
+					if err := os.WriteFile(filePath, decodedData, 0644); err == nil {
+						dbAvatarPath = "/uploads/serverAvatar/" + fileName
+					}
+				}
+			}
+		}
+
+		if dbAvatarPath != "" {
+			_, err = db.Exec(`UPDATE servers SET name = ?, avatar = ? WHERE id = ?`,
+				req.Name, dbAvatarPath, req.ServerID)
+		} else {
+			_, err = db.Exec(`UPDATE servers SET name = ? WHERE id = ?`,
+				req.Name, req.ServerID)
+		}
 
 		if err != nil {
-			http.Error(w, "Erreur lors de la sauvegarde", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans UpdateServerOverviewHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 
-		// 5. On répond OK
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"message": "Serveur mis à jour !"})
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Serveur mis à jour !",
+			"avatar":  dbAvatarPath,
+		})
 	}
 }
 
@@ -284,7 +310,6 @@ func GetUserRoleHandler(db *sql.DB) http.HandlerFunc {
 		var ownerID string
 		var mutedUntil sql.NullString
 
-		// Récupération du rôle, de l'owner et de la date de mute
 		err := db.QueryRow(`
 			SELECT sm.role, s.owner_id, sm.muted_until 
 			FROM servers s
@@ -292,11 +317,10 @@ func GetUserRoleHandler(db *sql.DB) http.HandlerFunc {
 			WHERE s.id = ?`, myID, serverID).Scan(&role, &ownerID, &mutedUntil)
 
 		if err != nil {
-			http.Error(w, "Serveur introuvable", 404)
+			utils.SendJSONError(w, "Serveur introuvable", 404)
 			return
 		}
 
-		// Si c'est le créateur, il est admin
 		if myID == ownerID {
 			role = "admin"
 		}
@@ -304,10 +328,8 @@ func GetUserRoleHandler(db *sql.DB) http.HandlerFunc {
 		isMuted := false
 		untilVal := ""
 		if mutedUntil.Valid {
-			// On stocke la valeur brute pour le JS
 			untilVal = mutedUntil.String
 
-			// Vérification si le mute est encore actif
 			mutedTime, err := time.Parse(time.RFC3339, untilVal)
 			if err != nil {
 				mutedTime, _ = time.ParseInLocation("2006-01-02 15:04:05", untilVal, time.Local)
@@ -321,7 +343,114 @@ func GetUserRoleHandler(db *sql.DB) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"role":     role,
 			"is_muted": isMuted,
-			"until":    untilVal, // 🌟 Important pour le refresh
+			"until":    untilVal, 
 		})
+	}
+}
+
+func DeleteServerHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+			return
+		}
+
+		myID, err := utils.GetUserIDFromSession(r, db)
+		if err != nil {
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
+			return
+		}
+
+		var req struct {
+			ServerID string `json:"server_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			utils.SendJSONError(w, "Données invalides", http.StatusBadRequest)
+			return
+		}
+
+		var ownerID string
+		var avatar sql.NullString
+		err = db.QueryRow("SELECT owner_id, avatar FROM servers WHERE id = ?", req.ServerID).Scan(&ownerID, &avatar)
+		if err != nil {
+			utils.SendJSONError(w, "Serveur introuvable", http.StatusNotFound)
+			return
+		}
+
+		if ownerID != myID {
+			utils.SendJSONError(w, "Seul le propriétaire peut supprimer le serveur", http.StatusForbidden)
+			return
+		}
+
+		if avatar.Valid && avatar.String != "" {
+			oldPath := "." + avatar.String
+			if strings.HasPrefix(oldPath, "./uploads/") {
+				os.Remove(oldPath)
+			}
+		}
+
+		_, err = db.Exec("DELETE FROM servers WHERE id = ?", req.ServerID)
+		if err != nil {
+			log.Printf("❌ Erreur dans DeleteServerHandler : %v", err)
+			utils.SendJSONError(w, "Erreur interne", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "Serveur supprimé"})
+	}
+}
+
+func UpdateMemberRoleHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+			return
+		}
+
+		myID, err := utils.GetUserIDFromSession(r, db)
+		if err != nil {
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
+			return
+		}
+
+		var req struct {
+			ServerID string `json:"server_id"`
+			TargetID string `json:"target_id"`
+			Role     string `json:"role"` 
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			utils.SendJSONError(w, "Données invalides", http.StatusBadRequest)
+			return
+		}
+
+		if req.Role != "admin" && req.Role != "member" {
+			utils.SendJSONError(w, "Rôle invalide", http.StatusBadRequest)
+			return
+		}
+
+		var myRole string
+		err = db.QueryRow("SELECT role FROM server_members WHERE server_id = ? AND user_id = ?", req.ServerID, myID).Scan(&myRole)
+		if err != nil || myRole != "admin" {
+			utils.SendJSONError(w, "Accès refusé : Droits administrateur requis", http.StatusForbidden)
+			return
+		}
+
+		var ownerID string
+		db.QueryRow("SELECT owner_id FROM servers WHERE id = ?", req.ServerID).Scan(&ownerID)
+		if req.TargetID == ownerID {
+			utils.SendJSONError(w, "Impossible de modifier le rôle du propriétaire du serveur", http.StatusForbidden)
+			return
+		}
+
+		_, err = db.Exec("UPDATE server_members SET role = ? WHERE server_id = ? AND user_id = ?", req.Role, req.ServerID, req.TargetID)
+		if err != nil {
+			log.Printf("❌ Erreur dans UpdateMemberRoleHandler : %v", err)
+			utils.SendJSONError(w, "Erreur interne", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "Rôle mis à jour avec succès"})
 	}
 }

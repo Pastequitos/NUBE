@@ -1,4 +1,4 @@
-// frontend/js/settings.js
+
 import { loadComponent, updateAllAvatarsInDOM } from './utils.js';
 import { notify } from './notifications.js';
 import { openCropper } from './cropper.js';
@@ -9,7 +9,6 @@ export async function openSettings() {
     const settingsContainer = document.getElementById('settings');
     if (!settingsContainer) return;
 
-    // 🌟 1. LOGIQUE DE TOGGLE (Fermeture)
     if (settingsContainer.classList.contains('open')) {
         settingsContainer.classList.remove('open');
         settingsContainer.classList.add('close');
@@ -19,16 +18,14 @@ export async function openSettings() {
             settingsContainer.innerHTML = ''; 
         }, 300); 
         
-        return; // On arrête la fonction ici car on vient de fermer
+        return; 
     }
 
-    // 🌟 2. LOGIQUE D'OUVERTURE
     settingsContainer.classList.remove('close');
     settingsContainer.classList.add('open');
     settingsContainer.innerHTML = await loadComponent('/frontend/components/settings.html');
     settingsContainer.style.display = 'block';
 
-    // --- Initialisation des éléments ---
     const avatarInput = document.getElementById('settingsAvatarInput');
     const avatarPreview = document.getElementById('settingsAvatarPreview');
     const saveBtn = document.getElementById('saveSettingsBtn');
@@ -42,7 +39,6 @@ export async function openSettings() {
         avatarBase64 = state.userAvatar;
     }
 
-    // On récupère ta bio pour pré-remplir le champ
     if (bioInput) {
         try {
             const res = await fetch(`/api/user-profile?user_id=${state.userId}`);
@@ -51,11 +47,10 @@ export async function openSettings() {
                 bioInput.value = data.bio || "";
             }
         } catch (e) {
-            console.error("Erreur de chargement de la bio :", e);
+            
         }
     }
 
-    // Gestion du changement d'avatar
     avatarInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -102,7 +97,6 @@ export async function openSettings() {
         });
     });
 
-    // Gestion du bouton enregistrer
     if (saveBtn) {
         saveBtn.addEventListener('click', async () => {
             const bioText = bioInput ? bioInput.value.trim() : "";
@@ -124,10 +118,7 @@ export async function openSettings() {
 
                 if (res.ok) {
                     notify.success("Profil mis à jour avec succès !");
-                    
-                    // Optionnel : Fermer automatiquement les paramètres après la sauvegarde
-                    // openSettings(); 
-                    
+
                 } else {
                     const err = await res.json();
                     notify.error(err.message || "Erreur lors de la mise à jour.");
@@ -142,7 +133,7 @@ export async function openSettings() {
     }
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
-            handleLogout(); // Ferme le socket, nettoie l'état et redirige vers la page de connexion
+            handleLogout(); 
         });
     }
 }

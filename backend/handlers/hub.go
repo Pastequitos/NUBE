@@ -6,17 +6,6 @@ import (
 	"sync"
 )
 
-// Message définit la structure des messages circulant dans le Hub et l'API
-type Message struct {
-	Type        string `json:"type"` // "public" ou "private"
-	Sender      string `json:"sender"`
-	Content     string `json:"content"`
-	ServerID    string `json:"server_id"`
-	ReceiverID  string `json:"receiver_id"` // 🌟 NOUVEAU
-	MessageType string `json:"message_type"`
-	CreatedAt   string `json:"created_at"`
-}
-
 type Hub struct {
 	Clients    map[*Client]bool
 	Broadcast  chan []byte
@@ -42,17 +31,15 @@ func (h *Hub) Run() {
 			h.Clients[client] = true
 			h.mu.Unlock()
 
-			// 📢 Notifier tout le monde que cet utilisateur est en ligne
 			h.broadcastStatus(client.UserID, "online")
 
 		case client := <-h.Unregister:
 			h.mu.Lock()
 			if _, ok := h.Clients[client]; ok {
-				userID := client.UserID // On garde l'ID avant de supprimer
+				userID := client.UserID
 				delete(h.Clients, client)
 				close(client.Send)
 
-				// 📢 Notifier tout le monde que cet utilisateur est hors-ligne
 				h.broadcastStatus(userID, "offline")
 			}
 			h.mu.Unlock()
@@ -72,7 +59,6 @@ func (h *Hub) Run() {
 	}
 }
 
-// broadcastStatus prévient tous les clients connectés d'un changement de statut
 func (h *Hub) broadcastStatus(userID string, status string) {
 	msg, err := json.Marshal(map[string]string{
 		"type":    "user_status",
@@ -84,18 +70,14 @@ func (h *Hub) broadcastStatus(userID string, status string) {
 		return
 	}
 
-	// On ne verrouille pas ici car broadcastStatus est appelé
-	// depuis Run qui gère déjà ses propres flux de données sécurisés
 	for client := range h.Clients {
 		select {
 		case client.Send <- msg:
 		default:
-			// Si le canal est bloqué, on laisse tomber pour ce client
 		}
 	}
 }
 
-// GetOnlineUserIDs retourne une map des IDs actuellement connectés
 func (h *Hub) GetOnlineUserIDs() map[string]bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -110,10 +92,10 @@ func (h *Hub) SendToUsers(message []byte, userIDs ...string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	fmt.Printf("📢 Tentative d'envoi WS à : %v\n", userIDs) // DEBUG
+	fmt.Printf("📢 Tentative d'envoi WS à : %v\n", userIDs) 
 
 	for client := range h.Clients {
-		// fmt.Printf("🔍 Client connecté en mémoire : %s\n", client.UserID) // DEBUG
+		
 		for _, id := range userIDs {
 			if client.UserID == id {
 				fmt.Printf("✅ Cible trouvée, envoi du message !\n")

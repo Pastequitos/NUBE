@@ -1,4 +1,4 @@
-// server.js
+
 import { state } from './state.js';
 import { initContextMenus, showServerContextMenu } from './contextMenu.js';
 import { loadComponent } from './utils.js';
@@ -71,7 +71,7 @@ export const loadServers = async () => {
                 }
 
                 iconElement.addEventListener('click', () => selectServer(server.id, server.name));
-                iconElement.addEventListener('contextmenu', (e) => showServerContextMenu(e, server.id, server.name));
+                iconElement.addEventListener('contextmenu', (e) => showServerContextMenu(e, server.id, server.name, server.avatar));
 
                 fragment.appendChild(iconElement);
             });
@@ -79,7 +79,7 @@ export const loadServers = async () => {
             serverList.appendChild(fragment);
         }
     } catch (err) {
-        console.error("Erreur loadServers:", err);
+        
     } finally {
         isLoadingServers = false;
     }
@@ -88,7 +88,6 @@ export const loadServers = async () => {
 export async function selectServer(serverId, serverName = null) {
     if (!serverId) return;
 
-    // Récupérer les infos complètes du serveur dans le state
     const server = state.servers ? state.servers.find(s => String(s.id) === String(serverId)) : null;
     const finalName = serverName || (server ? server.name : "Serveur inconnu");
 
@@ -97,15 +96,15 @@ export async function selectServer(serverId, serverName = null) {
 
     const header = document.getElementById('currentServerName');
     if (header) {
-        // 🌟 NOUVELLE LOGIQUE DE HEADER : Icône + Nom
-        header.innerHTML = ''; // On vide le "# Nom"
+        
+        header.innerHTML = ''; 
         header.style.display = 'flex';
         header.style.alignItems = 'center';
         header.style.gap = '10px';
 
         const iconDiv = document.createElement('div');
         iconDiv.className = 'header-server-icon';
-        // Style de base pour l'icône dans le header
+        
         iconDiv.style.width = '24px';
         iconDiv.style.height = '24px';
         iconDiv.style.borderRadius = '50%';
@@ -118,12 +117,12 @@ export async function selectServer(serverId, serverName = null) {
         iconDiv.style.flexShrink = '0';
 
         if (server && server.avatar && server.avatar.trim() !== "") {
-            // Image si elle existe
+            
             iconDiv.style.backgroundImage = `url(${server.avatar})`;
             iconDiv.style.backgroundSize = 'cover';
             iconDiv.style.backgroundPosition = 'center';
         } else {
-            // Initiale + Couleur si pas d'image
+            
             iconDiv.style.backgroundColor = server ? server.color : '#5865F2';
             iconDiv.innerText = finalName.charAt(0).toUpperCase();
         }
@@ -153,7 +152,7 @@ export async function selectServer(serverId, serverName = null) {
             }
         }
     } catch (err) {
-        console.error("Erreur check role/mute:", err);
+        
     }
 
     fetch('/api/users/last-server', {

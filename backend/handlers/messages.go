@@ -3,40 +3,50 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
+	"strconv"
+
+	"forum/backend/utils"
 )
 
 func GetMessagesHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 1. Récupérer le server_id dans l'URL (?server_id=...)
+		
 		serverID := r.URL.Query().Get("server_id")
 		if serverID == "" {
-			http.Error(w, "server_id manquant", http.StatusBadRequest)
+			utils.SendJSONError(w, "server_id manquant", http.StatusBadRequest)
 			return
 		}
 
-		// 🌟 2. Requête SQL MODIFIÉE : On inclut u.avatar et m.sender_id
+		offsetStr := r.URL.Query().Get("offset")
+		offset := 0
+		if offsetStr != "" {
+			offset, _ = strconv.Atoi(offsetStr)
+		}
+
 		query := `
             SELECT u.nickname, u.avatar, m.sender_id, m.content, m.server_id, m.message_type, m.created_at 
             FROM messages m 
             JOIN users u ON m.sender_id = u.id 
             WHERE m.server_id = ? 
-            ORDER BY m.created_at ASC
+            ORDER BY m.created_at DESC
+            LIMIT 20 OFFSET ?
         `
 
-		rows, err := db.Query(query, serverID)
+		rows, err := db.Query(query, serverID, offset)
 		if err != nil {
-			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans GetMessagesHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
 
-		// 🌟 3. On crée un tableau de maps pour construire le JSON exactement comme le JS l'attend
 		var messages []map[string]interface{}
 
 		for rows.Next() {
 			var nickname, content, srvID, msgType, createdAt, senderID string
-			var avatar sql.NullString // Sécurité si jamais l'avatar n'est pas encore défini
+			var avatar sql.NullString 
 
 			err := rows.Scan(&nickname, &avatar, &senderID, &content, &srvID, &msgType, &createdAt)
 			if err == nil {
@@ -63,6 +73,10 @@ func GetMessagesHandler(db *sql.DB) http.HandlerFunc {
 			messages = []map[string]interface{}{}
 		}
 
+		for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+			messages[i], messages[j] = messages[j], messages[i]
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(messages)
 	}
@@ -70,71 +84,68 @@ func GetMessagesHandler(db *sql.DB) http.HandlerFunc {
 
 func GetPrivateMessagesHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// 1. Récupérer l'ID de l'utilisateur actuel via le cookie
-		cookie, err := r.Cookie("session_token")
+		
+		currentUserID, err := utils.GetUserIDFromSession(r, db)
 		if err != nil {
-			http.Error(w, "Non autorisé", http.StatusUnauthorized)
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
 			return
 		}
 
-		var currentUserID string
-		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&currentUserID)
-		if err != nil {
-			http.Error(w, "Session invalide", http.StatusUnauthorized)
-			return
-		}
-
-		// 2. Récupérer l'ID de l'ami avec qui on discute
 		friendID := r.URL.Query().Get("user_id")
 		if friendID == "" {
-			http.Error(w, "user_id manquant", http.StatusBadRequest)
+			utils.SendJSONError(w, "user_id manquant", http.StatusBadRequest)
 			return
 		}
 
-		// 3. Récupérer les messages entre les deux utilisateurs (dans les deux sens)
+		offsetStr := r.URL.Query().Get("offset")
+		offset := 0
+		if offsetStr != "" {
+			offset, _ = strconv.Atoi(offsetStr)
+		}
+
 		query := `
             SELECT u.nickname, u.avatar, m.sender_id, m.content, m.created_at 
             FROM private_messages m 
             JOIN users u ON m.sender_id = u.id 
             WHERE (m.sender_id = ? AND m.receiver_id = ?) 
                OR (m.sender_id = ? AND m.receiver_id = ?)
-            ORDER BY m.created_at ASC
+            ORDER BY m.created_at DESC
+            LIMIT 20 OFFSET ?
         `
 
-		rows, err := db.Query(query, currentUserID, friendID, friendID, currentUserID)
+		rows, err := db.Query(query, currentUserID, friendID, friendID, currentUserID, offset)
 		if err != nil {
-			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans GetPrivateMessagesHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
 
-		var messages []map[string]interface{}
+		var messages []utils.Message
 
 		for rows.Next() {
-			var nickname, content, createdAt, senderID string
+			var msg utils.Message
 			var avatar sql.NullString
 
-			err := rows.Scan(&nickname, &avatar, &senderID, &content, &createdAt)
+			err := rows.Scan(&msg.Sender, &avatar, &msg.SenderID, &msg.Content, &msg.CreatedAt)
 			if err == nil {
-				finalAvatar := ""
+				msg.Type = "private"
+				msg.MessageType = "user"
+
 				if avatar.Valid {
-					finalAvatar = avatar.String
+					msg.Avatar = avatar.String
 				}
 
-				messages = append(messages, map[string]interface{}{
-					"type":         "private",
-					"sender":       nickname,
-					"sender_id":    senderID,
-					"avatar":       finalAvatar,
-					"content":      content,
-					"message_type": "user",
-					"created_at":   createdAt,
-				})
+				messages = append(messages, msg)
 			}
 		}
 
 		if messages == nil {
-			messages = []map[string]interface{}{}
+			messages = []utils.Message{}
+		}
+
+		for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+			messages[i], messages[j] = messages[j], messages[i]
 		}
 
 		w.Header().Set("Content-Type", "application/json")

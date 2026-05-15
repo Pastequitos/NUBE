@@ -1,4 +1,4 @@
-// users.js
+
 import { addLiquidGlassElement } from './liquidGlass.js';
 import { loadPrivateHistory } from './messages.js';
 import { state } from './state.js';
@@ -28,7 +28,7 @@ export async function loadServerMembers(serverId) {
         const members = await response.json();
 
         if (requestId !== currentMembersRequestId) {
-            console.warn("🛑 Requête obsolète pour les membres ignorée.");
+            
             return;
         }
 
@@ -85,7 +85,7 @@ export async function loadServerMembers(serverId) {
         container.appendChild(fragment);
 
     } catch (err) {
-        console.error("Erreur chargement membres :", err);
+        
     }
 }
 
@@ -236,7 +236,7 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
                 }
             }
         } catch (err) {
-            console.error("Erreur check statut ami:", err);
+            
             addBtn.innerText = "Ajouter en ami";
             addBtn.disabled = false;
         }
@@ -282,7 +282,7 @@ async function handleProfileFriendAction(targetId, action, btn) {
             btn.disabled = false;
         }
     } catch (err) {
-        console.error("Erreur action profil:", err);
+        
         btn.disabled = false;
     }
 }
@@ -384,8 +384,7 @@ export async function loadFriendsList() {
 
                 const uniqueId = `contact-glass-${friend.id}`;
                 item.id = uniqueId;
-                
-                // 🌟 Très important : on met bien la classe friend-item et le dataset pour retrouver l'élément
+
                 item.classList.add('friend-item');
                 item.dataset.id = friend.id;
 
@@ -398,7 +397,6 @@ export async function loadFriendsList() {
                     imgElement.setAttribute('data-user-id', friend.id);
                 }
 
-                // 🌟 3. AJOUT DE LA PASTILLE SI MESSAGE NON LU
                 if (friend.unread_count && friend.unread_count > 0) {
                     const badge = document.createElement('span');
                     badge.className = 'unread-badge';
@@ -445,7 +443,7 @@ export async function loadFriendsList() {
             });
         }
     } catch (err) {
-        console.error("❌ Erreur loadFriendsList:", err);
+        
     } finally {
         isLoadingFriends = false;
     }
@@ -460,10 +458,10 @@ export async function handleFriendAction(targetId, action) {
         });
 
         if (!response.ok) {
-            console.error(`Erreur serveur lors de l'action: ${action}`);
+            
         }
 
     } catch (err) {
-        console.error("Erreur réseau lors de l'action ami:", err);
+        
     }
 }

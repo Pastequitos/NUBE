@@ -1,4 +1,4 @@
-// main.js
+
 import { state } from './state.js';
 import { DEFAULT_AVATAR, loadComponent } from './utils.js';
 import { connectWS } from './websocket.js';
@@ -10,7 +10,6 @@ import { loadFriendsList } from './users.js';
 import { initCursorFollower } from './background.js';
 import { openSettings } from './settings.js';
 
-// 🌟 Importation du nouveau moteur optimisé
 import { initLiquidGlassEngine, addLiquidGlassElement } from './liquidGlass.js';
 
 export const app = document.getElementById('app');
@@ -51,23 +50,20 @@ export async function renderHome() {
 }
 
 async function initApp() {
-    // 1. Charger la structure principale
+    
     const appHTML = await loadComponent('/frontend/components/main.html');
     app.innerHTML = appHTML;
 
-    // 2. Charger spécifiquement le conteneur de message dans son wrapper
     const chatWrapper = document.getElementById('chatGlassWrapper');
     if (chatWrapper) {
         chatWrapper.innerHTML = await loadComponent('/frontend/components/messageContainer.html');
     }
 
-    // 3. Charger les données
     await Promise.all([
         loadServers(),
         loadFriendsList()
     ]);
 
-    // 4. Listeners
     setupChatListeners();
     setupModalListeners();
 
@@ -76,7 +72,6 @@ async function initApp() {
         btnSettings.addEventListener('click', () => openSettings());
     }
 
-    // 5. Appliquer le Liquid Glass avec un délai de sécurité
     setTimeout(() => {
         const elements = [
             { id: 'chatGlassWrapper', config: { radius: 38.0, bezel: 38.0, thickness: 40.0, ior: 3.0, brightness: 0.7 } },
@@ -95,10 +90,8 @@ async function initApp() {
     }, 150);
 }
 
-// 1. Initialise le moteur 3D immédiatement (pour le fond fluide)
 initLiquidGlassEngine(appBackgroundImage);
 
-// 2. Initialise les notifications puis vérifie l'Auth
 initGlobalComponents().then(() => {
     checkAuth();
 });

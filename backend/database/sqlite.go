@@ -91,7 +91,6 @@ CREATE TABLE IF NOT EXISTS server_members (
         FOREIGN KEY(receiver_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- 🌟 NOUVEAU : Table pour traquer la lecture des messages privés
     CREATE TABLE IF NOT EXISTS private_read_receipts (
         user_id TEXT NOT NULL,
         peer_id TEXT NOT NULL, -- L'ami avec qui on discute
@@ -128,7 +127,6 @@ CREATE TABLE IF NOT EXISTS server_members (
 		return nil, err
 	}
 
-	// Données par défaut...
 	db.Exec(`INSERT OR IGNORE INTO users (id, nickname, email, password) VALUES ('0', 'System', 'system@forum.com', 'none');`)
 	db.Exec(`INSERT OR IGNORE INTO servers (id, name, owner_id, color) VALUES ('1', 'Salon Général', '0', '#5865F2');`)
 	db.Exec(`INSERT OR IGNORE INTO server_members (server_id, user_id) VALUES ('1', '0');`)

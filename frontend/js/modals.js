@@ -1,4 +1,4 @@
-// modals.js
+
 import { loadComponent } from './utils.js';
 import { loadServers } from './server.js';
 
@@ -14,13 +14,13 @@ export function setupModalListeners() {
             modal.innerHTML = await loadComponent('/frontend/components/modalContainer/createServer.html');
             modal.style.display = 'flex';
 
-            const serverCard = modal.firstElementChild; 
+            const serverCard = modal.firstElementChild;
 
             if (serverCard) {
                 const uniqueId = `create-server-glass-${Date.now()}`;
                 serverCard.id = uniqueId;
 
-                const modalRadius = 42.0; 
+                const modalRadius = 42.0;
 
                 Array.from(serverCard.children).forEach(child => {
                     child.style.position = 'relative';
@@ -28,19 +28,18 @@ export function setupModalListeners() {
                 });
 
                 setTimeout(() => {
-                    addLiquidGlassElement(uniqueId, { 
-                        radius: modalRadius, 
-                        bezel: modalRadius, 
-                        thickness: 50.0,    // Verre bien épais
-                        ior: 2.2,           // Forte distorsion
-                        brightness: 1.2,    // Assez clair pour "pop" à l'écran
-                        tint: 0.1, 
-                        interactive: false 
+                    addLiquidGlassElement(uniqueId, {
+                        radius: modalRadius,
+                        bezel: modalRadius,
+                        thickness: 50.0,    
+                        ior: 2.2,           
+                        brightness: 1.2,    
+                        tint: 0.1,
+                        interactive: false
                     });
                 }, 10);
             }
 
-            // --- SUITE DE TON CODE (Logique des formulaires) ---
             const form = document.getElementById('createServerForm');
             const serverNameInput = document.getElementById('serverNameInput');
             const joinInput = document.getElementById('joinServerInput');
@@ -106,15 +105,22 @@ export function setupModalListeners() {
 
                         if (res.ok) {
                             const data = await res.json();
-                            notify.success(`Vous avez rejoint ${data.server_name} avec success !`);
+
+                            if (data.already_joined) {
+                                notify.info(`Vous êtes déjà membre de ${data.server_name}. Redirection...`);
+                            } else {
+                                notify.success(`Vous avez rejoint ${data.server_name} avec succès !`);
+                            }
+
                             closeModal();
                             await loadServers();
+
                         } else {
-                            const errText = await res.text();
-                            notify.error(`Impossible de rejoindre : ${errText}`);
+                            const errData = await res.json().catch(() => ({ message: "Erreur inconnue" }));
+                            notify.error(`Impossible de rejoindre le serveur : ${errData.message || "Erreur serveur"}`);
                         }
                     } catch (err) {
-                        notify.error("Erreur de connexion.");
+                        notify.error("Erreur de connexion au serveur.");
                     }
                 };
             }
@@ -122,7 +128,7 @@ export function setupModalListeners() {
     }
 }
 
-export async function openInviteModal(serverId, serverName) { 
+export async function openInviteModal(serverId, serverName) {
     const modalContainer = document.getElementById('modalContainer');
     if (!modalContainer) return;
 
@@ -131,13 +137,13 @@ export async function openInviteModal(serverId, serverName) {
         modalContainer.innerHTML = modalHTML;
         modalContainer.style.display = 'flex';
 
-        const inviteCard = modalContainer.firstElementChild; 
+        const inviteCard = modalContainer.firstElementChild;
 
         if (inviteCard) {
             const uniqueId = `invite-glass-${Date.now()}`;
             inviteCard.id = uniqueId;
 
-            const modalRadius = 38.0; 
+            const modalRadius = 38.0;
 
             Array.from(inviteCard.children).forEach(child => {
                 child.style.position = 'relative';
@@ -145,14 +151,14 @@ export async function openInviteModal(serverId, serverName) {
             });
 
             setTimeout(() => {
-                addLiquidGlassElement(uniqueId, { 
-                    radius: modalRadius, 
-                    bezel: modalRadius, 
-                    thickness: 50.0,    // Verre épais pour une modale
-                    ior: 2.2,           // Forte déformation
-                    brightness: 1.2,    // Bien lumineux
-                    tint: 0.1, 
-                    interactive: false 
+                addLiquidGlassElement(uniqueId, {
+                    radius: modalRadius,
+                    bezel: modalRadius,
+                    thickness: 50.0,    
+                    ior: 2.2,           
+                    brightness: 1.2,    
+                    tint: 0.1,
+                    interactive: false
                 });
             }, 10);
         }
@@ -175,7 +181,7 @@ export async function openInviteModal(serverId, serverName) {
 
         const inputLink = document.getElementById('inviteLinkInput');
         if (inputLink) {
-            inputLink.value = "Génération du lien..."; 
+            inputLink.value = "Génération du lien...";
 
             const response = await fetch('/api/invites', {
                 method: 'POST',
@@ -199,7 +205,7 @@ export async function openInviteModal(serverId, serverName) {
                 document.execCommand('copy');
                 copyBtn.innerText = 'Copié !';
                 copyBtn.style.backgroundColor = '#23a559';
-                
+
                 notify.success("Lien d'invitation copié dans le presse-papier !");
 
                 setTimeout(() => {
@@ -209,6 +215,6 @@ export async function openInviteModal(serverId, serverName) {
             };
         }
     } catch (err) {
-        console.error("Erreur ouverture modale invitation:", err);
+        
     }
 }

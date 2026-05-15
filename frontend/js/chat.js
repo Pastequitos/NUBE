@@ -1,14 +1,11 @@
 import { state } from './state.js';
 
-
-
 export function setupChatListeners() {
     const input = document.getElementById('messageInput');
     const btn = document.getElementById('sendMessage');
 
     const sendMessage = () => {
-        // La vérification input.disabled empêche l'envoi même si l'utilisateur
-        // essaie de forcer via la console ou le bouton
+
         if (!input || input.disabled) return;
 
         const text = input.value.trim();

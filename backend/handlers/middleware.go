@@ -1,13 +1,14 @@
-// backend/handlers/middleware.go
+
 package handlers
 
 import (
+	"forum/backend/utils"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
 
-// SecurityMiddleware ajoute des en-têtes de sécurité HTTP pour protéger l'application
 func SecurityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -15,10 +16,6 @@ func SecurityMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 
-		// 🌟 LA NOUVELLE RÈGLE CSP MISE À JOUR :
-		// - script-src : on ajoute https://unpkg.com pour Three.js
-		// - style-src : on ajoute https://fonts.googleapis.com pour la CSS de la police
-		// - font-src : on crée cette règle pour autoriser le téléchargement du fichier de police depuis Google
 		csp := "default-src 'self'; " +
 			"script-src 'self' 'unsafe-inline' https://unpkg.com; " +
 			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
@@ -33,8 +30,11 @@ func SecurityMiddleware(next http.Handler) http.Handler {
 }
 
 var (
-	visitors = make(map[string]*visitor)
-	mu       sync.Mutex
+	strictVisitors = make(map[string]*visitor)
+	strictMu       sync.Mutex
+
+	globalVisitors = make(map[string]*visitor)
+	globalMu       sync.Mutex
 )
 
 type visitor struct {
@@ -42,35 +42,62 @@ type visitor struct {
 	attempts int
 }
 
-// RateLimitMiddleware bloque les IP qui spamment une route spécifique (ex: /api/login)
 func RateLimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// On récupère l'adresse IP de l'utilisateur
 		ip := r.RemoteAddr
 
-		mu.Lock()
-		v, exists := visitors[ip]
+		strictMu.Lock()
+		v, exists := strictVisitors[ip]
 		if !exists {
-			// C'est sa première visite, on l'enregistre
-			visitors[ip] = &visitor{lastSeen: time.Now(), attempts: 1}
+			strictVisitors[ip] = &visitor{lastSeen: time.Now(), attempts: 1}
 		} else {
-			// Si sa dernière tentative date d'il y a plus d'une minute, on remet le compteur à zéro
 			if time.Since(v.lastSeen) > 1*time.Minute {
 				v.attempts = 0
 			}
 			v.attempts++
 			v.lastSeen = time.Now()
 
-			// 🌟 LA RÈGLE : Plus de 5 tentatives par minute = BLOQUÉ
 			if v.attempts > 5 {
-				mu.Unlock()
-				http.Error(w, `{"message": "Trop de tentatives. Veuillez patienter une minute."}`, http.StatusTooManyRequests) // Erreur 429
+				strictMu.Unlock()
+				utils.SendJSONError(w, `{"message": "Trop de tentatives de connexion. Veuillez patienter."}`, http.StatusTooManyRequests)
 				return
 			}
 		}
-		mu.Unlock()
+		strictMu.Unlock()
 
-		// Si tout va bien, on passe au handler normal
+		next.ServeHTTP(w, r)
+	})
+}
+
+func GlobalRateLimitMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		
+		if !strings.HasPrefix(r.URL.Path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ip := r.RemoteAddr
+
+		globalMu.Lock()
+		v, exists := globalVisitors[ip]
+		if !exists {
+			globalVisitors[ip] = &visitor{lastSeen: time.Now(), attempts: 1}
+		} else {
+			if time.Since(v.lastSeen) > 1*time.Minute {
+				v.attempts = 0
+			}
+			v.attempts++
+			v.lastSeen = time.Now()
+
+			if v.attempts > 120 {
+				globalMu.Unlock()
+				utils.SendJSONError(w, `{"message": "Trop de requêtes globales. Calmez-vous."}`, http.StatusTooManyRequests)
+				return
+			}
+		}
+		globalMu.Unlock()
+
 		next.ServeHTTP(w, r)
 	})
 }

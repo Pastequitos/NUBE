@@ -2,21 +2,31 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"forum/backend/utils"
 )
 
 func SearchUsersHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("q")
 		if len(query) < 2 {
-			http.Error(w, "Recherche trop courte", http.StatusBadRequest)
+			utils.SendJSONError(w, "Recherche trop courte", http.StatusBadRequest)
 			return
 		}
 
 		rows, err := db.Query("SELECT id, nickname FROM users WHERE nickname LIKE ? LIMIT 5", "%"+query+"%")
 		if err != nil {
-			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans SearchUsersHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
@@ -33,65 +43,50 @@ func SearchUsersHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// AddFriendHandler envoie une demande d'ami
 func AddFriendHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
-		// 1. Récupération de l'ID de l'envoyeur via la session
-		cookie, err := r.Cookie("session_token")
+		myID, err := utils.GetUserIDFromSession(r, db)
 		if err != nil {
-			http.Error(w, "Non autorisé", http.StatusUnauthorized)
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
 			return
 		}
 
-		var myID string
-		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
-		if err != nil {
-			http.Error(w, "Session invalide", http.StatusUnauthorized)
-			return
-		}
-
-		// 2. Récupération de l'ID de la cible
 		var req struct {
 			TargetID string `json:"target_id"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Requête invalide", http.StatusBadRequest)
+			utils.SendJSONError(w, "Requête invalide", http.StatusBadRequest)
 			return
 		}
 
 		if myID == req.TargetID {
-			http.Error(w, "On ne peut pas être ami avec soi-même (même si on s'aime beaucoup)", http.StatusBadRequest)
+			utils.SendJSONError(w, "On ne peut pas être ami avec soi-même (même si on s'aime beaucoup)", http.StatusBadRequest)
 			return
 		}
 
-		// 3. Tri des IDs pour la clé primaire (user_id1 < user_id2)
 		uid1, uid2 := myID, req.TargetID
 		if uid1 > uid2 {
 			uid1, uid2 = uid2, uid1
 		}
 
-		// 4. Insertion en BDD
-		// INSERT OR IGNORE évite les erreurs si une demande existe déjà
 		result, err := db.Exec(`
             INSERT OR IGNORE INTO friends (user_id1, user_id2, status, action_user_id) 
             VALUES (?, ?, 'pending', ?)`,
 			uid1, uid2, myID)
 
 		if err != nil {
-			http.Error(w, "Erreur lors de l'enregistrement de la demande", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans AddFriendHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 
-		// Vérifier si une ligne a été réellement insérée
 		rowsAffected, _ := result.RowsAffected()
 		if rowsAffected > 0 {
-			// 5. 🚀 NOTIFICATION WEB SOCKET (Temps Réel)
-			// On prévient le destinataire qu'il a une nouvelle demande
 			notification, _ := json.Marshal(map[string]interface{}{
 				"type":      "friend_request",
 				"sender_id": myID,
@@ -109,21 +104,17 @@ func AddFriendHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 
 func GetFriendsHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session_token")
-		if err != nil {
-			http.Error(w, "Non autorisé", http.StatusUnauthorized)
+		if r.Method != http.MethodGet {
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
-		var myID string
-		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
+		myID, err := utils.GetUserIDFromSession(r, db)
 		if err != nil {
-			http.Error(w, "Session invalide", http.StatusUnauthorized)
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
 			return
 		}
 
-		// 🌟 SQL MAGIQUE : On ajoute une sous-requête pour compter les messages non lus
-		// COALESCE permet de mettre une date très ancienne si on n'a jamais ouvert la discussion.
 		query := `
             SELECT u.id, u.nickname, u.avatar, f.status, f.action_user_id,
             (
@@ -143,7 +134,8 @@ func GetFriendsHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 
 		rows, err := db.Query(query, myID, myID, myID, myID, myID)
 		if err != nil {
-			http.Error(w, "Erreur SQL lors de la récupération des amis", 500)
+			log.Printf("❌ Erreur dans GetFriendsHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", 500)
 			return
 		}
 		defer rows.Close()
@@ -152,14 +144,12 @@ func GetFriendsHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 		for rows.Next() {
 			var id, nickname, status, actionUserID string
 			var avatar sql.NullString
-			var unreadCount int // 🌟 Nouvelle variable
+			var unreadCount int 
 
-			// On ajoute &unreadCount au scan
 			if err := rows.Scan(&id, &nickname, &avatar, &status, &actionUserID, &unreadCount); err != nil {
 				continue
 			}
 
-			// Statut en ligne via le Hub
 			isOnline := false
 			for client := range hub.Clients {
 				if client.UserID == id {
@@ -182,7 +172,7 @@ func GetFriendsHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 				"online":       isOnline,
 				"is_requester": isRequester,
 				"avatar":       finalAvatar,
-				"unread_count": unreadCount, // 🌟 On l'envoie au Frontend
+				"unread_count": unreadCount,
 			})
 		}
 
@@ -198,28 +188,24 @@ func GetFriendsHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 func AcceptFriendHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
-		// 1. Récupérer ma session (mon ID)
 		cookie, _ := r.Cookie("session_token")
 		var myID string
 		db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
 
-		// 2. Récupérer l'ID de la personne à accepter
 		var req struct {
 			TargetID string `json:"target_id"`
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 
-		// 3. Normalisation des IDs (Ordre croissant pour la DB)
 		uid1, uid2 := myID, req.TargetID
 		if uid1 > uid2 {
 			uid1, uid2 = uid2, uid1
 		}
 
-		// 4. Update SQL
 		_, err := db.Exec(`
             UPDATE friends 
             SET status = 'accepted' 
@@ -227,15 +213,15 @@ func AcceptFriendHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 			uid1, uid2)
 
 		if err != nil {
-			http.Error(w, "Erreur SQL", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans AcceptFriendHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 
-		// 5. Notification WebSocket (Broadcast à tout le monde)
 		notification, _ := json.Marshal(map[string]interface{}{
 			"type":      "friend_accept",
-			"sender_id": myID,         // Celui qui a cliqué
-			"target_id": req.TargetID, // L'autre qui attend
+			"sender_id": myID,         
+			"target_id": req.TargetID, 
 		})
 		hub.Broadcast <- notification
 
@@ -243,11 +229,10 @@ func AcceptFriendHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 	}
 }
 
-// Modifie la signature pour accepter le Hub
-func DeclineFriendHandler(db *sql.DB, hub *Hub) http.HandlerFunc { // 🌟 Ajout du hub
+func DeclineFriendHandler(db *sql.DB, hub *Hub) http.HandlerFunc { 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -267,7 +252,8 @@ func DeclineFriendHandler(db *sql.DB, hub *Hub) http.HandlerFunc { // 🌟 Ajout
 
 		_, err := db.Exec("DELETE FROM friends WHERE user_id1 = ? AND user_id2 = ?", uid1, uid2)
 		if err != nil {
-			http.Error(w, "Erreur lors de la suppression", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans DeclineFriendHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 
@@ -282,80 +268,107 @@ func DeclineFriendHandler(db *sql.DB, hub *Hub) http.HandlerFunc { // 🌟 Ajout
 	}
 }
 
-type AvatarRequest struct {
-	Avatar string `json:"avatar"`
-}
-
 func UpdateAvatarHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, `{"message": "Méthode non autorisée"}`, http.StatusMethodNotAllowed)
+			utils.SendJSONError(w, `{"message": "Méthode non autorisée"}`, http.StatusMethodNotAllowed)
 			return
 		}
 
-		// 🌟 SÉCURITÉ ULTRA-OPTIMISÉE :
-		// Puisque le JS envoie un WebP 128x128, ça ne dépassera jamais 50Ko.
-		// On met un plafond strict à 200 Ko (200 * 1024 octets).
-		// Si un pirate essaie d'envoyer plus, le serveur lui raccroche au nez !
 		r.Body = http.MaxBytesReader(w, r.Body, 200<<10)
 
-		// 1. On vérifie que l'utilisateur est bien connecté
-		cookie, err := r.Cookie("session_token")
+		myID, err := utils.GetUserIDFromSession(r, db)
 		if err != nil {
-			http.Error(w, `{"message": "Non connecté"}`, http.StatusUnauthorized)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"message": "Non autorisé ou session invalide"})
 			return
 		}
 
-		var myID string
-		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
-		if err != nil {
-			http.Error(w, `{"message": "Session invalide"}`, http.StatusUnauthorized)
-			return
-		}
-
-		// 2. On lit l'image en Base64 envoyée par le frontend
-		var req AvatarRequest
+		var req utils.AvatarRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, `{"message": "Données invalides"}`, http.StatusBadRequest)
+			utils.SendJSONError(w, `{"message": "Données invalides"}`, http.StatusBadRequest)
 			return
 		}
 
-		if req.Avatar == "" {
-			http.Error(w, `{"message": "Aucune image fournie"}`, http.StatusBadRequest)
+		if req.Avatar == "" || !strings.HasPrefix(req.Avatar, "data:image/") {
+			utils.SendJSONError(w, `{"message": "Format d'image invalide"}`, http.StatusBadRequest)
 			return
 		}
 
-		_, err = db.Exec("UPDATE users SET avatar = ? WHERE id = ?", req.Avatar, myID)
+		parts := strings.Split(req.Avatar, ",")
+		if len(parts) < 2 {
+			utils.SendJSONError(w, `{"message": "Base64 corrompu"}`, http.StatusBadRequest)
+			return
+		}
+
+		extension := ".png"
+		if strings.Contains(parts[0], "webp") {
+			extension = ".webp"
+		} else if strings.Contains(parts[0], "jpeg") || strings.Contains(parts[0], "jpg") {
+			extension = ".jpg"
+		}
+
+		decodedData, err := base64.StdEncoding.DecodeString(parts[1])
 		if err != nil {
-			http.Error(w, `{"message": "Erreur serveur lors de la sauvegarde"}`, http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans UpdateAvatarHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 
-		// 4. On renvoie un succès au JS
+		if err := utils.ValidateImageMimeType(decodedData); err != nil {
+			utils.SendJSONError(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		uploadDir := "./uploads/avatars"
+		os.MkdirAll(uploadDir, 0755)
+
+		fileName := fmt.Sprintf("avatar_%s_%d%s", myID, time.Now().Unix(), extension)
+		filePath := filepath.Join(uploadDir, fileName)
+
+		var oldAvatar sql.NullString
+		err = db.QueryRow("SELECT avatar FROM users WHERE id = ?", myID).Scan(&oldAvatar)
+		if err == nil && oldAvatar.Valid && oldAvatar.String != "" {
+			oldPath := "." + oldAvatar.String 
+			if strings.HasPrefix(oldPath, "./uploads/") {
+				os.Remove(oldPath) 
+			}
+		}
+
+		err = os.WriteFile(filePath, decodedData, 0644)
+		if err != nil {
+			log.Printf("❌ Erreur dans UpdateAvatarHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
+			return
+		}
+
+		dbPath := fmt.Sprintf("/uploads/avatars/%s", fileName)
+		_, err = db.Exec("UPDATE users SET avatar = ? WHERE id = ?", dbPath, myID)
+		if err != nil {
+			log.Printf("❌ Erreur dans UpdateAvatarHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"message": "Avatar mis à jour avec succès"})
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Avatar mis à jour",
+			"path":    dbPath,
+		})
 	}
 }
 
 func UpdateLastServerHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
-		// 1. Vérifier la session
-		cookie, err := r.Cookie("session_token")
+		myID, err := utils.GetUserIDFromSession(r, db)
 		if err != nil {
-			http.Error(w, "Non connecté", http.StatusUnauthorized)
-			return
-		}
-
-		var myID string
-		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
-		if err != nil {
-			http.Error(w, "Session invalide", http.StatusUnauthorized)
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
 			return
 		}
 
@@ -364,12 +377,8 @@ func UpdateLastServerHandler(db *sql.DB) http.HandlerFunc {
 		}
 		json.NewDecoder(r.Body).Decode(&req)
 
-		// 🌟 ON FAIT DEUX UPDATES D'UN COUP
-		// 1. Mémorise le dernier serveur (ton code actuel)
 		db.Exec("UPDATE users SET last_server_id = ? WHERE id = ?", req.ServerID, myID)
 
-		// 2. Marque le serveur comme LU (Nouveau !)
-		// On met à jour la date dans la table de liaison
 		db.Exec(`
             UPDATE server_members 
             SET last_read_at = CURRENT_TIMESTAMP 
@@ -380,24 +389,19 @@ func UpdateLastServerHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// GetUnreadCountsHandler renvoie le nombre de messages non lus pour chaque serveur
 func GetUnreadCountsHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session_token")
-		if err != nil {
-			http.Error(w, "Non connecté", http.StatusUnauthorized)
+		if r.Method != http.MethodGet {
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
-		var userID string
-		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&userID)
+		userID, err := utils.GetUserIDFromSession(r, db)
 		if err != nil {
-			http.Error(w, "Session invalide", http.StatusUnauthorized)
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
 			return
 		}
 
-		// 🌟 On compte les messages créés APRÈS la date de dernière lecture
-		// et on exclut les messages envoyés par l'utilisateur lui-même (m.sender_id != sm.user_id) !
 		query := `
             SELECT sm.server_id, COUNT(m.id) 
             FROM server_members sm
@@ -409,7 +413,8 @@ func GetUnreadCountsHandler(db *sql.DB) http.HandlerFunc {
 
 		rows, err := db.Query(query, userID)
 		if err != nil {
-			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans GetUnreadCountsHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
@@ -428,19 +433,16 @@ func GetUnreadCountsHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// MarkPrivateReadHandler met à jour la date de dernière lecture d'une conversation privée
 func MarkPrivateReadHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session_token")
-		if err != nil {
-			http.Error(w, "Non autorisé", http.StatusUnauthorized)
+		if r.Method != http.MethodPost {
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 			return
 		}
 
-		var myID string
-		err = db.QueryRow("SELECT user_id FROM sessions WHERE id = ?", cookie.Value).Scan(&myID)
+		myID, err := utils.GetUserIDFromSession(r, db)
 		if err != nil {
-			http.Error(w, "Session invalide", http.StatusUnauthorized)
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
 			return
 		}
 
@@ -448,22 +450,85 @@ func MarkPrivateReadHandler(db *sql.DB) http.HandlerFunc {
 			TargetID string `json:"target_id"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Requête invalide", http.StatusBadRequest)
+			utils.SendJSONError(w, "Requête invalide", http.StatusBadRequest)
 			return
 		}
 
-		// 🌟 INSERT OR REPLACE : Magie de SQLite !
-		// Si la ligne existe, il la met à jour. Si elle n'existe pas (première discussion), il la crée.
 		_, err = db.Exec(`
             INSERT OR REPLACE INTO private_read_receipts (user_id, peer_id, last_read_at)
             VALUES (?, ?, CURRENT_TIMESTAMP)`,
 			myID, req.TargetID)
 
 		if err != nil {
-			http.Error(w, "Erreur BDD", http.StatusInternalServerError)
+			log.Printf("❌ Erreur dans MarkPrivateReadHandler : %v", err)
+			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", http.StatusInternalServerError)
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func DeleteUserHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			utils.SendJSONError(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+			return
+		}
+
+		myID, err := utils.GetUserIDFromSession(r, db)
+		if err != nil {
+			utils.SendJSONError(w, "Non autorisé ou session invalide", http.StatusUnauthorized)
+			return
+		}
+
+		var userAvatar sql.NullString
+		_ = db.QueryRow("SELECT avatar FROM users WHERE id = ?", myID).Scan(&userAvatar)
+
+		rows, err := db.Query("SELECT avatar FROM servers WHERE owner_id = ?", myID)
+		var serverAvatars []string
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var sa sql.NullString
+				if err := rows.Scan(&sa); err == nil && sa.Valid && sa.String != "" {
+					serverAvatars = append(serverAvatars, sa.String)
+				}
+			}
+		}
+
+		_, err = db.Exec("DELETE FROM users WHERE id = ?", myID)
+		if err != nil {
+			log.Printf("❌ Erreur dans DeleteUserHandler : %v", err)
+			utils.SendJSONError(w, "Erreur interne", http.StatusInternalServerError)
+			return
+		}
+
+		if userAvatar.Valid && userAvatar.String != "" {
+			oldPath := "." + userAvatar.String
+			if strings.HasPrefix(oldPath, "./uploads/") {
+				os.Remove(oldPath)
+			}
+		}
+
+		for _, sa := range serverAvatars {
+			oldPath := "." + sa
+			if strings.HasPrefix(oldPath, "./uploads/") {
+				os.Remove(oldPath)
+			}
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_token",
+			Value:    "",
+			Path:     "/",
+			Expires:  time.Now().Add(-1 * time.Hour),
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+		})
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"message": "Compte supprimé"})
 	}
 }

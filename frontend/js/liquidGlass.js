@@ -1,21 +1,15 @@
 import * as THREE from 'three';
 
-// Variables globales du Moteur
 let engineInitialized = false;
 let renderer, scene, camera, material;
 const glassElements = [];
 
-// (Optionnel) Pour le débogage dans la console
 window.debugGlass = glassElements;
 
-// ============================================================================
-// 1. INITIALISATION DU MOTEUR
-// ============================================================================
 export function initLiquidGlassEngine(backgroundImageUrl) {
     if (engineInitialized) return;
     engineInitialized = true;
 
-    // Création du Grand Canvas Global
     const canvas = document.createElement('canvas');
     canvas.id = 'masterLiquidCanvas';
     Object.assign(canvas.style, {
@@ -31,8 +25,7 @@ export function initLiquidGlassEngine(backgroundImageUrl) {
 
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    
-    // 🌟 CORRECTIF "TROU" : Empêche le moteur d'effacer les parents en dessinant les enfants
+
     renderer.autoClear = false;
 
     scene = new THREE.Scene();
@@ -213,16 +206,12 @@ export function initLiquidGlassEngine(backgroundImageUrl) {
     requestAnimationFrame(renderLoop);
 }
 
-// ============================================================================
-// 2. AJOUTER UN ÉLÉMENT EN VERRE (Avec gestion des intéractions)
-// ============================================================================
 export function addLiquidGlassElement(targetId, options = {}) {
     const target = document.getElementById(targetId);
     if (!target) {
-        console.error(`Cible ${targetId} introuvable.`);
+        
         return;
     }
-
 
     const baseOptions = {
         radius: options.radius || 38.0,
@@ -268,14 +257,10 @@ export function addLiquidGlassElement(targetId, options = {}) {
     glassElements.push(item);
 }
 
-// ============================================================================
-// 3. LA BOUCLE DE RENDU OPTIMISÉE (Auto-nettoyage + Tri intelligent)
-// ============================================================================
 function renderLoop() {
     requestAnimationFrame(renderLoop);
     if (!renderer || glassElements.length === 0) return;
 
-    // 🌟 GESTION DE LA MÉMOIRE : Supprime les éléments qui ne sont plus sur la page
     for (let i = glassElements.length - 1; i >= 0; i--) {
         if (!document.body.contains(glassElements[i].element)) {
             glassElements.splice(i, 1);
@@ -288,8 +273,6 @@ function renderLoop() {
 
     const winH = window.innerHeight;
 
-    // 🌟 TRI INTELLIGENT (ALGORITHME DU PEINTRE)
-    // Trie par surface : Les grands fonds d'abord, les petits boutons ensuite !
     const sortedElements = [...glassElements].sort((a, b) => {
         const rectA = a.element.getBoundingClientRect();
         const rectB = b.element.getBoundingClientRect();
@@ -298,20 +281,16 @@ function renderLoop() {
         return areaB - areaA; 
     });
 
-    // Rendu des éléments triés
     sortedElements.forEach(item => {
         const rect = item.element.getBoundingClientRect();
-        
-        // Optimisation : On ignore les éléments invisibles ou hors écran
+
         if (rect.width === 0 || rect.height === 0 || rect.bottom < 0 || rect.top > winH) return;
 
-        // 🌟 L'ANIMATION MAGIQUE (LERP)
         const lerpSpeed = 0.15;
         item.current.thickness += (item.target.thickness - item.current.thickness) * lerpSpeed;
         item.current.brightness += (item.target.brightness - item.current.brightness) * lerpSpeed;
         item.current.ior += (item.target.ior - item.current.ior) * lerpSpeed;
 
-        // Injection des valeurs dans le Shader
         material.uniforms.uRect.value.set(rect.left, rect.top, rect.width, rect.height);
         material.uniforms.uRadius.value = item.current.radius;
         material.uniforms.uBezel.value = item.current.bezel;
@@ -321,7 +300,6 @@ function renderLoop() {
         material.uniforms.uSpecular.value = item.current.specular;
         material.uniforms.uTint.value = item.current.tint;
 
-        // "Découpage" de la zone exacte pour cet élément
         const glY = winH - rect.bottom; 
         renderer.setViewport(rect.left, glY, rect.width, rect.height);
         renderer.setScissor(rect.left, glY, rect.width, rect.height);
