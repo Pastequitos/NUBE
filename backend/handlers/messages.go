@@ -31,7 +31,7 @@ func GetMessagesHandler(db *sql.DB) http.HandlerFunc {
             JOIN users u ON m.sender_id = u.id 
             WHERE m.server_id = ? 
             ORDER BY m.created_at DESC
-            LIMIT 20 OFFSET ?
+            LIMIT 50 OFFSET ?
         `
 
 		rows, err := db.Query(query, serverID, offset)
@@ -110,7 +110,7 @@ func GetPrivateMessagesHandler(db *sql.DB) http.HandlerFunc {
             WHERE (m.sender_id = ? AND m.receiver_id = ?) 
                OR (m.sender_id = ? AND m.receiver_id = ?)
             ORDER BY m.created_at DESC
-            LIMIT 20 OFFSET ?
+            LIMIT 50 OFFSET ?
         `
 
 		rows, err := db.Query(query, currentUserID, friendID, friendID, currentUserID, offset)

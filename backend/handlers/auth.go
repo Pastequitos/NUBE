@@ -170,15 +170,19 @@ func MeHandler(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		var nickname, avatar string
+		var nickname, avatar, background string
 		var lastServerID sql.NullString
 
-		query := `SELECT nickname, avatar, last_server_id FROM users WHERE id = ?`
-		err = db.QueryRow(query, myID).Scan(&nickname, &avatar, &lastServerID)
+		query := `SELECT nickname, avatar, last_server_id, background FROM users WHERE id = ?`
+		err = db.QueryRow(query, myID).Scan(&nickname, &avatar, &lastServerID, &background)
 
 		if err != nil {
 			utils.SendJSONError(w, "Utilisateur introuvable", http.StatusUnauthorized)
 			return
+		}
+
+		if background == "" {
+			background = "/frontend/assets/background/bg1.jpg"
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -188,6 +192,7 @@ func MeHandler(db *sql.DB) http.HandlerFunc {
 			"nickname":       nickname,
 			"avatar":         avatar,
 			"last_server_id": nil,
+			"background":     background,
 		}
 
 		if lastServerID.Valid {

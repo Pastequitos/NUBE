@@ -27,7 +27,7 @@ html {
     color: #dcddde;
     overflow: hidden;
     font-family: var(--font);
-    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("https://photos.peopleimages.com/picture/202404/3047549-bright-fluid-and-liquid-with-neon-for-wallpaper-or-abstract-texture-water-or-design-or-futuristic.-vivid-pattern-and-energy-or-matter-with-fractal-for-background-creative-or-art-with-technology-zoom_90.jpg");
+    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("/frontend/assets/background/bg1.jpg");
     background-size: cover;
     background-attachment: fixed;
     background-position: center;
@@ -75,6 +75,8 @@ p {
         max-height: 100%;
         overflow-y: scroll;
         overflow-x: hidden;
+        -webkit-mask-image: linear-gradient(black 95%, transparent);
+        mask-image: linear-gradient(black 95%, transparent);
 
         &::-webkit-scrollbar {
             width: 0px;
@@ -189,8 +191,8 @@ p {
 
         #openModalBtn {
             cursor: pointer;
-            background-color: rgb(61, 56, 69);
-            border: none;
+            background-color: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             width: 46px;
             height: 46px;
             border-radius: 50%;
@@ -205,8 +207,8 @@ p {
             transition: all 0.2s var(--cubic);
             position: relative;
             margin: auto;
-
         }
+
     }
 
 
@@ -241,7 +243,7 @@ p {
         }
 
         .contact-nickname {
-            color: #949ba4;
+            color: #ffffff;
             font-weight: 500;
             font-size: 14px;
         }
@@ -367,7 +369,6 @@ p {
             height: 80px;
             border-radius: 50%;
             object-fit: cover;
-            background-color: #36393f;
             border: 2px solid #5865F2;
         }
 
@@ -403,7 +404,7 @@ p {
                 width: 100%;
             }
 
-            
+
             .settings-save-btn {
                 background-color: var(--glass);
                 border: 1px solid var(--glassBorder);
@@ -414,7 +415,7 @@ p {
                 transition: all 0.2s var(--cubic);
                 width: 100%;
             }
-            
+
             .settings-save-btn:hover {
                 background-color: var(--glassHover);
             }
@@ -479,7 +480,7 @@ p {
     }
 
     100% {
-        height: 420px;
+        height: 530px;
         padding-bottom: var(--padding);
         padding-top: var(--padding);
     }
@@ -488,7 +489,7 @@ p {
 @keyframes closeSettings {
     0% {
         padding-top: var(--padding);
-        height: 420px;
+        height: 530px;
     }
 
     100% {
@@ -497,6 +498,64 @@ p {
         padding-bottom: 0px;
     }
 }
+
+.bg-selector-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+    justify-content: space-between;
+}
+
+.bg-option {
+    position: relative;
+    width: 60px;
+    height: 40px;
+    border-radius: var(--petitBorderRadius);
+    background-size: cover;
+    background-position: center;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+    transition: all 0.2s var(--cubic);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.bg-option:hover {
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.bg-option.active {
+    border-color: #5865F2;
+    box-shadow: 0 0 10px rgba(88, 101, 242, 0.6);
+    transform: scale(1.05);
+}
+
+.bg-upload-option {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--glass);
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+.bg-upload-option:hover {
+    border-color: rgba(255, 255, 255, 0.6);
+    background-color: var(--glassHover);
+}
+
+.upload-plus {
+    font-size: 20px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.6);
+    user-select: none;
+    transition: color 0.2s var(--cubic);
+}
+
+.bg-upload-option:hover .upload-plus {
+    color: white;
+}
+
+
 
 #rightContainer {
     width: 100%;
@@ -514,12 +573,11 @@ p {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-radius: var(--petitBorderRadius);
-            background-color: var(--glass);
-            border: 1px solid var(--glassBorder);
-            backdrop-filter: blur(var(--backdropIntensity));
+            background-color: transparent;
+            border: none;
+            backdrop-filter: none;
             margin-bottom: 0px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: none;
 
 
             h3 {
@@ -625,7 +683,7 @@ p {
             flex-direction: column;
             gap: var(--petitPadding);
 
-            .user-item {
+            .member-identity {
                 display: flex;
                 align-items: center;
                 gap: 12px;
@@ -647,12 +705,15 @@ p {
 
                 .bannerContainer {
                     min-height: 120px;
-                    background-color: black;
                     width: 100%;
                     position: relative;
 
                     .banner {
                         background-color: blue;
+                        width: 100%;
+                        height: 100%;
+                        display: block;
+                        border-radius: var(--petitBorderRadius);
                     }
 
                     .profilePicture {
@@ -667,16 +728,13 @@ p {
                         border-radius: 50%;
                     }
 
-                    .status {
+                    .status-dot {
                         display: block;
                         height: 20px;
                         width: 20px;
-                        border-radius: 50%;
-                        background-color: rgb(36, 216, 81);
-                        bottom: 6px;
-                        right: 6px;
+                        bottom: 4px;
+                        right: 4px;
                         position: fixed;
-
                     }
                 }
             }
@@ -697,25 +755,12 @@ p {
             }
 
             .bottomContainer {
-                padding: var(--padding);
 
                 div {
                     padding: var(--padding);
-                    background-color: #36393f;
                     display: flex;
                     flex-direction: column;
                     font-size: 14px;
-
-                    &:not(:last-child) {
-                        border-top-left-radius: var(--borderRadius);
-                        border-top-right-radius: var(--borderRadius);
-                    }
-
-                    &:last-child {
-                        border-bottom-left-radius: var(--borderRadius);
-                        border-bottom-right-radius: var(--borderRadius);
-                    }
-
 
                     .label {
                         font-weight: bold;
@@ -740,11 +785,43 @@ p {
 @keyframes openModalContent {
     from {
         transform: translateY(100vh);
+        opacity: 0;
     }
 
     to {
         transform: translateY(0);
+        opacity: 1;
     }
+}
+
+@keyframes closeModalContent {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateY(100vh);
+        opacity: 0;
+    }
+}
+
+@keyframes closeModalOverlay {
+    from {
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    to {
+        background-color: rgba(0, 0, 0, 0);
+    }
+}
+
+.modal-closing {
+    animation: closeModalOverlay 0.4s ease forwards !important;
+}
+
+.modal-closing>* {
+    animation: closeModalContent 0.4s cubic-bezier(.1, 0, 0, 1) forwards !important;
 }
 
 #modalContainer {
@@ -877,13 +954,13 @@ p {
 
 
 .separator {
+    display: block;
     width: 100%;
     height: 1px;
     background: var(--separator);
 }
 
 .glassContainer {
-    /*     background-color: var(--glass); */
     border: 1px solid var(--glassBorder);
     border-radius: var(--borderRadius);
     height: 100%;

@@ -1,7 +1,8 @@
 
 import { state } from './state.js';
-import { DEFAULT_AVATAR, escapeHTML } from './utils.js';
+import { DEFAULT_AVATAR, escapeHTML, apiFetch } from './utils.js';
 import { notify } from './notifications.js';
+import { loadRightPanelProfile } from './users.js';
 
 let lastMessageInfo = {
     sender: null,
@@ -12,6 +13,7 @@ let lastMessageInfo = {
 let currentOffset = 0;
 let hasMoreMessages = true;
 let isFetching = false;
+let currentChatContext = { type: null, id: null, nickname: null, avatar: null };
 
 export function formatTime(dateString) {
     if (!dateString) return "";
@@ -82,10 +84,12 @@ export function createMessageElements(messages, trackGlobalLastMessage = false) 
             const messageElement = document.createElement('div');
             messageElement.classList.add('message-item');
             messageElement.innerHTML = `
-                <div class="message-avatar"><img src="${avatarSrc}" data-user-id="${senderId}"></div>
+                <div class="message-avatar" data-action="open-profile" data-id="${senderId}" data-nickname="${senderName}" style="cursor: pointer;">
+                    <img src="${avatarSrc}" alt="${senderName}">
+                </div>
                 <div class="message-body">
                     <div class="message-header">
-                        <span class="message-sender">${senderName}</span>
+                        <span class="message-sender" data-action="open-profile" data-id="${senderId}" data-nickname="${senderName}" style="cursor: pointer;">${senderName}</span>
                         <span class="message-time">${formatTime(msg.created_at)}</span>
                     </div>
                     <div class="message-text">${escapeHTML(msg.content)}</div>
@@ -112,32 +116,47 @@ export function appendMessage(msg) {
     }
 }
 
-export async function loadServerHistory(serverId, isLoadMore = false) {
+export async function loadHistory(type, id, options = {}) {
+    const { nickname = null, avatar = null, isLoadMore = false } = options;
     const chatZone = document.getElementById('chatContainer');
+    const chatHeader = document.getElementById('currentServerName');
+
     if (!chatZone) return;
 
     if (!isLoadMore) {
-        chatZone.innerHTML = '';
-        lastMessageInfo = { sender: null, date: null, bodyElement: null };
+        currentChatContext = { type, id, nickname, avatar };
         currentOffset = 0;
         hasMoreMessages = true;
-        chatZone.onscroll = () => {
-            if (chatZone.scrollTop === 0) {
-                loadServerHistory(serverId, true);
+        chatZone.innerHTML = '';
+        lastMessageInfo = { sender: null, date: null, bodyElement: null };
+
+        if (type === 'dm') {
+            state.activeServerId = null;
+            state.activeDmUserId = id;
+            if (chatHeader) {
+                chatHeader.innerHTML = `
+                    <img src="${avatar || DEFAULT_AVATAR}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">
+                    <span>${nickname}</span>
+                `;
             }
-        };
+        }
+        
+        if (type === 'dm') {
+            loadRightPanelProfile(id, nickname, avatar);
+        }
     }
 
     if (!hasMoreMessages || isFetching) return;
     isFetching = true;
 
-    try {
-        const response = await fetch(`/api/messages?server_id=${serverId}&offset=${currentOffset}`);
-        const messages = await response.json();
+    const endpoint = type === 'server' 
+        ? `/api/messages?server_id=${id}&offset=${currentOffset}`
+        : `/api/messages/private?user_id=${id}&offset=${currentOffset}`;
 
-        if (!messages || messages.length < 20) {
-            hasMoreMessages = false;
-        }
+    const { ok, data: messages } = await apiFetch(endpoint, {}, false);
+
+    if (ok) {
+        if (!messages || messages.length < 50) hasMoreMessages = false;
 
         if (messages && messages.length > 0) {
             currentOffset += messages.length;
@@ -151,89 +170,49 @@ export async function loadServerHistory(serverId, isLoadMore = false) {
                 chatZone.appendChild(fragment);
                 chatZone.scrollTop = chatZone.scrollHeight;
             }
+
+            // Correction Bug Scroll : Si le conteneur n'est pas encore scrollable 
+            // et qu'il reste des messages, on charge la page suivante automatiquement.
+            if (chatZone.scrollHeight <= chatZone.clientHeight && hasMoreMessages) {
+                isFetching = false; // On libère pour le prochain appel
+                return loadHistory(type, id, { ...options, isLoadMore: true });
+            }
+        } else if (!isLoadMore && type === 'dm') {
+            chatZone.innerHTML = `<div class="chat-welcome">C'est le début de votre conversation avec ${escapeHTML(nickname)} !</div>`;
         }
-    } catch (err) {
-        
     }
 
     isFetching = false;
 }
 
-export async function loadPrivateHistory(userId, nickname, avatarSrc = null, isLoadMore = false) {
-    const chatZone = document.getElementById('chatContainer');
-    const chatHeader = document.getElementById('currentServerName');
+// Alias pour compatibilité descendante si nécessaire
+export const loadServerHistory = (serverId, isLoadMore = false) => loadHistory('server', serverId, { isLoadMore });
+export const loadPrivateHistory = (userId, nickname, avatarSrc, isLoadMore = false) => 
+    loadHistory('dm', userId, { nickname, avatar: avatarSrc, isLoadMore });
 
+export function setupChatDelegation() {
+    const chatZone = document.getElementById('chatContainer');
     if (!chatZone) return;
 
-    if (!isLoadMore) {
-        state.activeServerId = null;
-        state.activeDmUserId = userId;
-
-        if (chatHeader) {
-            chatHeader.innerHTML = '';
-            chatHeader.style.display = 'flex';
-            chatHeader.style.alignItems = 'center';
-            chatHeader.style.gap = '10px';
-
-            const img = document.createElement('img');
-            img.src = avatarSrc || DEFAULT_AVATAR;
-            img.style.width = '24px';
-            img.style.height = '24px';
-            img.style.borderRadius = '50%';
-            img.style.objectFit = 'cover';
-            img.style.flexShrink = '0';
-
-            const nameSpan = document.createElement('span');
-            nameSpan.innerText = nickname;
-
-            chatHeader.appendChild(img);
-            chatHeader.appendChild(nameSpan);
+    chatZone.addEventListener('click', async (e) => {
+        const target = e.target.closest('[data-action="open-profile"]');
+        if (target) {
+            const { id, nickname } = target.dataset;
+            const avatarSrc = target.querySelector('img')?.src || DEFAULT_AVATAR;
+            const { openUserProfile } = await import('./users.js');
+            openUserProfile(id, nickname, avatarSrc);
         }
+    });
 
-        chatZone.innerHTML = '';
-        lastMessageInfo = { sender: null, date: null, bodyElement: null };
-        currentOffset = 0;
-        hasMoreMessages = true;
-        chatZone.onscroll = () => {
-            if (chatZone.scrollTop === 0) {
-                loadPrivateHistory(userId, nickname, avatarSrc, true);
-            }
-        };
-    }
-
-    if (!hasMoreMessages || isFetching) return;
-    isFetching = true;
-
-    try {
-        const response = await fetch(`/api/messages/private?user_id=${userId}&offset=${currentOffset}`);
-        if (response.ok) {
-            const messages = await response.json();
-
-            if (!messages || messages.length < 20) {
-                hasMoreMessages = false;
-            }
-
-            if (messages && messages.length > 0) {
-                currentOffset += messages.length;
-                const fragment = createMessageElements(messages, !isLoadMore);
-
-                if (isLoadMore) {
-                    const oldScrollHeight = chatZone.scrollHeight;
-                    chatZone.insertBefore(fragment, chatZone.firstChild);
-                    chatZone.scrollTop = chatZone.scrollHeight - oldScrollHeight;
-                } else {
-                    chatZone.appendChild(fragment);
-                    chatZone.scrollTop = chatZone.scrollHeight;
-                }
-            } else if (!isLoadMore) {
-                chatZone.innerHTML = `<div class="chat-welcome">C'est le début de votre conversation avec ${escapeHTML(nickname)} !</div>`;
-            }
+    chatZone.addEventListener('scroll', () => {
+        if (chatZone.scrollTop === 0 && hasMoreMessages && !isFetching) {
+            loadHistory(currentChatContext.type, currentChatContext.id, { 
+                nickname: currentChatContext.nickname, 
+                avatar: currentChatContext.avatar, 
+                isLoadMore: true 
+            });
         }
-    } catch (err) {
-        
-    }
-
-    isFetching = false;
+    });
 }
 
 export function blockChatTemporarily(isMuted, until = null) {

@@ -126,13 +126,20 @@ func GetFriendsHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
                       (SELECT prr.last_read_at FROM private_read_receipts prr WHERE prr.user_id = ? AND prr.peer_id = u.id), 
                       '1970-01-01 00:00:00'
                   )
-            ) as unread_count
+            ) as unread_count,
+            COALESCE((
+                SELECT MAX(created_at)
+                FROM private_messages
+                WHERE (sender_id = ? AND receiver_id = u.id)
+                   OR (sender_id = u.id AND receiver_id = ?)
+            ), '1970-01-01 00:00:00') as last_message_at
             FROM friends f
             JOIN users u ON (u.id = f.user_id1 OR u.id = f.user_id2)
             WHERE (f.user_id1 = ? OR f.user_id2 = ?) 
-              AND u.id != ?`
+              AND u.id != ?
+            ORDER BY last_message_at DESC`
 
-		rows, err := db.Query(query, myID, myID, myID, myID, myID)
+		rows, err := db.Query(query, myID, myID, myID, myID, myID, myID, myID)
 		if err != nil {
 			log.Printf("❌ Erreur dans GetFriendsHandler : %v", err)
 			utils.SendJSONError(w, "Une erreur interne est survenue. Veuillez réessayer plus tard.", 500)
@@ -142,11 +149,11 @@ func GetFriendsHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 
 		var friends []map[string]interface{}
 		for rows.Next() {
-			var id, nickname, status, actionUserID string
+			var id, nickname, status, actionUserID, lastMsgAt string
 			var avatar sql.NullString
 			var unreadCount int 
 
-			if err := rows.Scan(&id, &nickname, &avatar, &status, &actionUserID, &unreadCount); err != nil {
+			if err := rows.Scan(&id, &nickname, &avatar, &status, &actionUserID, &unreadCount, &lastMsgAt); err != nil {
 				continue
 			}
 

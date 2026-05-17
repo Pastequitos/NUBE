@@ -20,6 +20,23 @@
             style="resize: none;" maxlength="200" spellcheck="false"></textarea>
     </div>
 
+    <div class="settings-group">
+        <label>Arrière-plan de l'application</label>
+        <div class="bg-selector-container">
+            <div class="bg-option" data-bg="/frontend/assets/background/bg1.jpg" style="background-image: url('/frontend/assets/background/bg1.jpg');" title="Background 1"></div>
+            <div class="bg-option" data-bg="/frontend/assets/background/bg2.jpg" style="background-image: url('/frontend/assets/background/bg2.jpg');" title="Background 2"></div>
+            <div class="bg-option" data-bg="/frontend/assets/background/bg3.jpg" style="background-image: url('/frontend/assets/background/bg3.jpg');" title="Background 3"></div>
+            
+            <div class="bg-option bg-upload-option" title="Importer une image personnalisée">
+                <span class="upload-plus">+</span>
+            </div>
+            
+            <input type="file" id="settingsBgInput" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
+        </div>
+    </div>
+
+
+
     <div class="settings-actions">
         <button id="saveSettingsBtn" class="settings-save-btn">Enregistrer</button>
         <button id="logoutBtn" class="settings-logout-btn">

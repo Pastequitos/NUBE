@@ -1,12 +1,68 @@
 
-import { addLiquidGlassElement } from './liquidGlass.js';
-import { loadPrivateHistory } from './messages.js';
+import { addLiquidGlassElement, applyLiquidGlass } from './liquidGlass.js';
+import { loadHistory } from './messages.js';
 import { state } from './state.js';
-import { loadComponent, DEFAULT_AVATAR } from './utils.js';
+import { loadComponent, DEFAULT_AVATAR, apiFetch, extractBannerGradient } from './utils.js';
 
 let isLoadingFriends = false;
 
 let currentMembersRequestId = 0;
+
+export function createMemberElement(member, options = {}) {
+    const {
+        template = null,
+        action = null,
+        glassOptions = null,
+        showStatus = true
+    } = options;
+
+    let element;
+    if (template) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = template.trim();
+        element = tempDiv.firstElementChild;
+    } else {
+        element = document.createElement('div');
+        element.className = 'contact-item';
+        element.innerHTML = `
+            <div class="member-identity" style="display: flex; align-items: center; gap: 10px;">
+                <div class="avatar-container">
+                    <img class="user-avatar-small" src="" data-user-id="" alt="Avatar" style="object-fit: cover;">
+                    <div class="status-dot"></div>
+                </div>
+                <span class="contact-nickname"></span>
+            </div>
+        `;
+    }
+
+    element.id = `member-glass-${member.id}`;
+    element.dataset.id = member.id;
+
+    if (showStatus && member.status) {
+        element.classList.remove('online', 'offline');
+        element.classList.add(member.status);
+    }
+
+    const nicknameEl = element.querySelector('.contact-nickname') || element.querySelector('.user-nickname');
+    if (nicknameEl) nicknameEl.innerText = member.nickname;
+
+    const avatarSrc = (member.avatar && member.avatar !== "") ? member.avatar : DEFAULT_AVATAR;
+    const imgElement = element.querySelector('.user-avatar-small');
+    if (imgElement) {
+        imgElement.src = avatarSrc;
+        imgElement.setAttribute('data-user-id', member.id);
+    }
+
+    if (action) {
+        element.dataset.action = action;
+    }
+
+    if (glassOptions) {
+        applyLiquidGlass(element, glassOptions);
+    }
+
+    return { element, avatarSrc };
+}
 
 export async function loadServerMembers(serverId) {
     const userContainer = document.getElementById('userContainer');
@@ -19,74 +75,116 @@ export async function loadServerMembers(serverId) {
 
     container.innerHTML = '<div class="user-list-header sectionTitle">Membres</div>';
 
-    try {
-        const templateHtml = await loadComponent('/frontend/components/userContainer/userList.html');
-        
-        const response = await fetch(`/api/server-members?server_id=${serverId}`);
-        if (!response.ok) return;
+    const templateHtml = await loadComponent('/frontend/components/userContainer/userList.html');
 
-        const members = await response.json();
+    const { ok, data: members } = await apiFetch(`/api/server-members?server_id=${serverId}`);
+    if (ok) {
+        if (requestId !== currentMembersRequestId) return;
 
-        if (requestId !== currentMembersRequestId) {
-            
-            return;
-        }
+        // Groupement par rôle
+        const admins = members.filter(m => m.role === 'admin');
+        const others = members.filter(m => m.role !== 'admin');
 
-        members.sort((a, b) => (a.status === 'online' ? -1 : 1));
+        container.innerHTML = ''; // On vide pour reconstruire
 
-        const fragment = document.createDocumentFragment();
+        const renderGroup = (title, list) => {
+            if (list.length === 0) return;
 
-        members.forEach(member => {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = templateHtml.trim();
-            const userItem = tempDiv.firstElementChild;
+            const header = document.createElement('div');
+            header.className = 'user-group-header';
+            header.innerText = `${title} — ${list.length}`;
+            container.appendChild(header);
 
-            const uniqueId = `member-glass-${member.id}`;
-            userItem.id = uniqueId;
-            userItem.dataset.id = member.id;
+            list.sort((a, b) => (a.status === 'online' ? -1 : 1));
 
-            userItem.classList.remove('online', 'offline');
-            userItem.classList.add(member.status);
-
-            const nicknameEl = userItem.querySelector('.user-nickname');
-            if (nicknameEl) nicknameEl.innerText = member.nickname;
-
-            const avatarSrc = (member.avatar && member.avatar !== "") ? member.avatar : DEFAULT_AVATAR;
-            const imgElement = userItem.querySelector('.user-avatar-small');
-            if (imgElement) {
-                imgElement.src = avatarSrc;
-                imgElement.setAttribute('data-user-id', member.id);
-            }
-
-            userItem.onclick = () => openUserProfile(member.id, member.nickname, avatarSrc);
-
-            userItem.style.position = 'relative';
-            Array.from(userItem.children).forEach(child => {
-                child.style.position = 'relative';
-                child.style.zIndex = '1';
-            });
-
-            fragment.appendChild(userItem);
-
-            setTimeout(() => {
-                if (document.getElementById(uniqueId)) {
-                    addLiquidGlassElement(uniqueId, {
+            list.forEach(member => {
+                const { element } = createMemberElement(member, {
+                    template: templateHtml,
+                    action: 'open-profile',
+                    glassOptions: {
                         radius: 28.0,
                         bezel: 28.0,
                         thickness: 25.0,
                         ior: 1.8,
                         interactive: true
-                    });
-                }
-            }, 50);
-        });
+                    }
+                });
+                container.appendChild(element);
+            });
+        };
 
-        container.innerHTML = '<div class="user-list-header sectionTitle">Membres</div>';
-        container.appendChild(fragment);
-
-    } catch (err) {
-        
+        renderGroup('ADMIN', admins);
+        renderGroup('MEMBRE', others);
     }
+}
+
+export async function loadRightPanelProfile(userId, nickname, avatarSrc) {
+    const userContainer = document.getElementById('userContainer');
+    if (!userContainer) return;
+
+    const container = userContainer.querySelector('.glassContainer');
+    if (!container) return;
+
+    const html = await loadComponent('/frontend/components/userContainer/userCard.html');
+    container.innerHTML = html;
+
+    const card = container.querySelector('#userCard');
+    if (!card) return;
+
+    const pseudoEl = card.querySelector('.pseudo');
+    const statusTextEl = card.querySelector('.status');
+    const profilePicEl = card.querySelector('.profilePicture');
+    const bioEl = card.querySelector('.bio');
+    const dateEl = card.querySelector('.date');
+
+    if (pseudoEl) pseudoEl.innerText = nickname;
+    if (profilePicEl) {
+        profilePicEl.style.backgroundImage = `url(${avatarSrc || DEFAULT_AVATAR})`;
+        profilePicEl.style.backgroundSize = 'cover';
+        profilePicEl.style.backgroundPosition = 'center';
+    }
+
+    const banner = card.querySelector('.banner');
+    if (banner) {
+        extractBannerGradient(avatarSrc || DEFAULT_AVATAR).then(gradient => {
+            banner.style.background = gradient;
+        });
+    }
+
+    const { ok, data } = await apiFetch(`/api/user-profile?user_id=${userId}`);
+    if (ok) {
+        if (bioEl) bioEl.innerText = data.bio || "Aucune bio";
+        if (dateEl && data.created_at) {
+            const date = new Date(data.created_at);
+            dateEl.innerText = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        if (statusTextEl) {
+            statusTextEl.innerText = data.is_online ? "en ligne" : "hors ligne";
+        }
+
+        const statusDot = card.querySelector('.status-dot') || card.querySelector('.status');
+        if (statusDot) {
+            card.classList.remove('online', 'offline');
+            card.classList.add(data.is_online ? 'online' : 'offline');
+            statusDot.className = 'status-dot'; // Ensure it has the class
+        }
+    }
+}
+
+
+export function setupUserContainerDelegation() {
+    const container = document.getElementById('userContainer');
+    if (!container) return;
+
+    container.addEventListener('click', (e) => {
+        const item = e.target.closest('[data-action="open-profile"]');
+        if (!item) return;
+
+        const userId = item.dataset.id;
+        const nickname = item.querySelector('.contact-nickname').innerText;
+        const avatarSrc = item.querySelector('.user-avatar-small').src;
+        openUserProfile(userId, nickname, avatarSrc);
+    });
 }
 
 export async function openUserProfile(userId, nickname, avatarSrc) {
@@ -104,22 +202,22 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
 
         profileCard.style.backdropFilter = 'blur(3px)';
 
-        Array.from(profileCard.children).forEach(child => {
-            child.style.position = 'relative';
-            child.style.zIndex = '1';
+        applyLiquidGlass(profileCard, {
+            radius: 42.0,
+            bezel: 42.0,
+            thickness: 50.0,
+            ior: 2.2,
+            brightness: 1.3,
+            tint: 0.1,
+            interactive: false
         });
+    }
 
-        setTimeout(() => {
-            addLiquidGlassElement(uniqueId, {
-                radius: 42.0,
-                bezel: 42.0,
-                thickness: 50.0, 
-                ior: 2.2,
-                brightness: 1.3, 
-                tint: 0.1,
-                interactive: false
-            });
-        }, 10);
+    const profileBanner = modalContainer.querySelector('.profile-banner');
+    if (profileBanner) {
+        extractBannerGradient(avatarSrc || DEFAULT_AVATAR).then(gradient => {
+            profileBanner.style.background = gradient;
+        });
     }
 
     document.getElementById('profileNickname').innerText = nickname;
@@ -135,80 +233,57 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
     const statusBadge = document.getElementById('profileStatusBadge');
     const statusText = document.getElementById('profileStatusText');
 
-    try {
-        const res = await fetch(`/api/user-profile?user_id=${userId}`);
-        if (res.ok) {
-            const data = await res.json();
+    const { ok, data } = await apiFetch(`/api/user-profile?user_id=${userId}`, {}, false);
+    if (ok) {
 
-            if (bioTextElement) {
-                bioTextElement.innerText = data.bio && data.bio.trim() !== ""
-                    ? data.bio
-                    : "Aucune biographie pour le moment.";
-            }
-
-            if (creationDateElement && data.created_at) {
-                const date = new Date(data.created_at);
-                const options = { year: 'numeric', month: 'long', day: 'numeric' };
-                creationDateElement.innerText = date.toLocaleDateString('fr-FR', options);
-            }
-
-            if (statusBadge && statusText) {
-                if (data.is_online) {
-                    statusBadge.classList.remove('offline');
-                    statusBadge.classList.add('online');
-                    statusText.innerText = "En ligne";
-                    statusText.classList.remove('offline');
-                    statusText.classList.add('online');
-                } else {
-                    statusBadge.classList.remove('online');
-                    statusBadge.classList.add('offline');
-                    statusText.innerText = "Hors ligne";
-                    statusText.classList.remove('online');
-                    statusText.classList.add('offline');
-                }
-            }
-        } else {
-            if (bioTextElement) bioTextElement.innerText = "Erreur lors du chargement du profil.";
+        if (bioTextElement) {
+            bioTextElement.innerText = data.bio && data.bio.trim() !== ""
+                ? data.bio
+                : "Aucune biographie pour le moment.";
         }
-    } catch (e) {
-        if (bioTextElement) bioTextElement.innerText = "Erreur de connexion.";
-    }
 
-    const addBtn = document.getElementById('addFriendBtn');
-    const dmBtn = document.getElementById('dmBtn'); 
+        if (creationDateElement && data.created_at) {
+            const date = new Date(data.created_at);
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            creationDateElement.innerText = date.toLocaleDateString('fr-FR', options);
+        }
 
-    if (dmBtn) {
+        if (statusBadge && statusText) {
+            if (data.is_online) {
+                statusBadge.classList.remove('offline');
+                statusBadge.classList.add('online');
+                statusText.innerText = "En ligne";
+                statusText.classList.remove('offline');
+                statusText.classList.add('online');
+            } else {
+                statusBadge.classList.remove('online');
+                statusBadge.classList.add('offline');
+                statusText.innerText = "Hors ligne";
+                statusText.classList.remove('online');
+                statusText.classList.add('offline');
+            }
+        }
+
+
+        const addBtn = document.getElementById('addFriendBtn');
+        const dmBtn = document.getElementById('dmBtn');
+
         if (dmBtn) {
-            dmBtn.onclick = () => {
-                modalContainer.style.display = 'none'; 
-                loadPrivateHistory(userId, nickname, avatarSrc); 
-        
-                fetch('/api/users/mark-private-read', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ target_id: userId })
-                });
-        
-                const friendItem = document.querySelector(`.friend-item[data-id="${userId}"]`);
-                if (friendItem) {
-                    const badge = friendItem.querySelector('.unread-badge');
-                    if (badge) badge.remove();
-                }
-            };
+            dmBtn.dataset.id = userId;
+            dmBtn.dataset.nickname = nickname;
+            dmBtn.dataset.avatar = avatarSrc;
+            dmBtn.dataset.action = 'dm-user';
         }
-    }
 
-    if (state.userId === String(userId)) {
-        addBtn.style.display = 'none';
-        if (dmBtn) dmBtn.style.display = 'none'; 
-    } else {
-        addBtn.innerText = "Vérification...";
-        addBtn.disabled = true;
+        if (state.userId === String(userId)) {
+            const profileBody = document.querySelector('.profile-body');
+            if (profileBody) profileBody.style.display = 'none';
+        } else {
+            addBtn.innerText = "Vérification...";
+            addBtn.disabled = true;
 
-        try {
-            const response = await fetch('/api/friends/list');
-            if (response.ok) {
-                const friends = await response.json();
+            const { ok, data: friends } = await apiFetch('/api/friends/list', {}, false);
+            if (ok) {
                 const relation = friends.find(f => f.id === userId);
 
                 addBtn.disabled = false;
@@ -235,56 +310,99 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
                     addBtn.onclick = () => handleProfileFriendAction(userId, 'add', addBtn);
                 }
             }
-        } catch (err) {
-            
-            addBtn.innerText = "Ajouter en ami";
-            addBtn.disabled = false;
         }
     }
-
-    modalContainer.onclick = (e) => {
-        if (e.target === modalContainer || e.target.closest('.close-modal-btn')) {
-            modalContainer.style.display = 'none';
-        }
-    };
 }
 
 async function handleProfileFriendAction(targetId, action, btn) {
     btn.innerText = "Chargement...";
     btn.disabled = true;
 
-    try {
-        const response = await fetch(`/api/friends/${action}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ target_id: targetId })
-        });
+    const { ok } = await apiFetch(`/api/friends/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_id: targetId })
+    });
 
-        if (response.ok) {
-            loadFriendsList();
+    if (ok) {
+        loadFriendsList();
 
-            if (action === 'add') {
-                btn.innerText = "Demande en attente";
-                btn.style.backgroundColor = "#80848e";
-            } else if (action === 'accept') {
-                btn.innerText = "Supprimer l'ami";
-                btn.style.backgroundColor = "#da373c";
-                btn.onclick = () => handleProfileFriendAction(targetId, 'decline', btn);
-                btn.disabled = false;
-            } else if (action === 'decline') {
-                btn.innerText = "Ajouter en ami";
-                btn.style.backgroundColor = "#5865F2";
-                btn.onclick = () => handleProfileFriendAction(targetId, 'add', btn);
-                btn.disabled = false;
-            }
-        } else {
-            btn.innerText = "Erreur !";
+        if (action === 'add') {
+            btn.innerText = "Demande en attente";
+            btn.style.backgroundColor = "#80848e";
+        } else if (action === 'accept') {
+            btn.innerText = "Supprimer l'ami";
+            btn.style.backgroundColor = "#da373c";
+            btn.onclick = () => handleProfileFriendAction(targetId, 'decline', btn);
+            btn.disabled = false;
+        } else if (action === 'decline') {
+            btn.innerText = "Ajouter en ami";
+            btn.style.backgroundColor = "#5865F2";
+            btn.onclick = () => handleProfileFriendAction(targetId, 'add', btn);
             btn.disabled = false;
         }
-    } catch (err) {
-        
+    } else {
+        btn.innerText = "Erreur !";
         btn.disabled = false;
     }
+}
+
+export function setupContactContainerDelegation() {
+    const container = document.getElementById('contactContainer');
+    if (!container) return;
+
+    container.addEventListener('click', (e) => {
+        const target = e.target;
+
+        // Action: Ouvrir le chat privé
+        const friendItem = target.closest('[data-action="open-chat"]');
+        if (friendItem) {
+            const userId = friendItem.dataset.id;
+            const nickname = friendItem.querySelector('.contact-nickname').innerText;
+            const avatarSrc = friendItem.querySelector('.user-avatar-small').src;
+            loadHistory('dm', userId, { nickname, avatar: avatarSrc });
+
+            const badge = friendItem.querySelector('.unread-badge');
+            if (badge) badge.remove();
+
+            apiFetch('/api/users/mark-private-read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target_id: userId })
+            }, false);
+            return;
+        }
+
+        // Action: Accepter demande d'ami
+        const acceptBtn = target.closest('[data-action="accept-friend"]');
+        if (acceptBtn) {
+            const userId = acceptBtn.closest('[data-id]').dataset.id;
+            handleFriendAction(userId, 'accept');
+            acceptBtn.closest('.pending-item').remove();
+            return;
+        }
+
+        // Action: Refuser demande d'ami
+        const declineBtn = target.closest('[data-action="decline-friend"]');
+        if (declineBtn) {
+            const userId = declineBtn.closest('[data-id]').dataset.id;
+            handleFriendAction(userId, 'decline');
+            declineBtn.closest('.pending-item').remove();
+            return;
+        }
+    });
+
+    // Context Menu: Ouvrir Profil
+    container.addEventListener('contextmenu', (e) => {
+        const item = e.target.closest('.friend-item');
+        if (item) {
+            e.preventDefault();
+            const userId = item.dataset.id;
+            const nickname = item.querySelector('.contact-nickname').innerText;
+            const avatarSrc = item.querySelector('.user-avatar-small').src;
+            openUserProfile(userId, nickname, avatarSrc);
+        }
+    });
 }
 
 export async function loadFriendsList() {
@@ -299,11 +417,8 @@ export async function loadFriendsList() {
 
     const container = contactContainer.querySelector('.glassContainer');
 
-    try {
-        const response = await fetch('/api/friends/list');
-        if (!response.ok) throw new Error("Erreur fetch amis");
-
-        const allRelations = await response.json();
+    const { ok, data: allRelations } = await apiFetch('/api/friends/list', {}, false);
+    if (ok) {
         container.innerHTML = '';
 
         const pendingRequests = allRelations.filter(f => f.status === 'pending' && !f.is_requester);
@@ -321,9 +436,7 @@ export async function loadFriendsList() {
                 tempDiv.innerHTML = pendingTemplate;
                 const item = tempDiv.firstElementChild;
 
-                const uniqueId = `pending-glass-${req.id}`;
-                item.id = uniqueId;
-
+                item.dataset.id = req.id;
                 item.querySelector('.contact-nickname').innerText = req.nickname;
 
                 const avatarSrc = req.avatar && req.avatar !== "" ? req.avatar : DEFAULT_AVATAR;
@@ -335,23 +448,13 @@ export async function loadFriendsList() {
 
                 const acceptBtn = item.querySelector('.accept-btn');
                 const declineBtn = item.querySelector('.decline-btn');
-
-                if (acceptBtn) {
-                    acceptBtn.onclick = (e) => {
-                        e.preventDefault();
-                        handleFriendAction(req.id, 'accept');
-                    };
-                }
-                if (declineBtn) {
-                    declineBtn.onclick = (e) => {
-                        e.preventDefault();
-                        handleFriendAction(req.id, 'decline');
-                    };
-                }
+                if (acceptBtn) acceptBtn.dataset.action = 'accept-friend';
+                if (declineBtn) declineBtn.dataset.action = 'decline-friend';
 
                 container.appendChild(item);
 
-                addLiquidGlassElement(uniqueId, {
+
+                applyLiquidGlass(item, {
                     radius: 28.0,
                     bezel: 28.0,
                     thickness: 15.0,
@@ -382,11 +485,8 @@ export async function loadFriendsList() {
                 tempDiv.innerHTML = contactTemplate;
                 const item = tempDiv.firstElementChild;
 
-                const uniqueId = `contact-glass-${friend.id}`;
-                item.id = uniqueId;
-
-                item.classList.add('friend-item');
                 item.dataset.id = friend.id;
+                item.dataset.action = 'open-chat';
 
                 item.querySelector('.contact-nickname').innerText = friend.nickname;
 
@@ -404,24 +504,6 @@ export async function loadFriendsList() {
                     item.appendChild(badge);
                 }
 
-                item.onclick = () => {
-                    loadPrivateHistory(friend.id, friend.nickname, avatarSrc); 
-                    
-                    const b = item.querySelector('.unread-badge');
-                    if (b) b.remove();
-                    
-                    fetch('/api/users/mark-private-read', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ target_id: friend.id })
-                    });
-                };
-                
-                item.oncontextmenu = (e) => {
-                    e.preventDefault(); 
-                    openUserProfile(friend.id, friend.nickname, avatarSrc);
-                };
-
                 if (friend.online === true) {
                     item.classList.add('online');
                     item.classList.remove('offline');
@@ -432,7 +514,8 @@ export async function loadFriendsList() {
 
                 container.appendChild(item);
 
-                addLiquidGlassElement(uniqueId, {
+
+                applyLiquidGlass(item, {
                     radius: 28.0,
                     bezel: 28.0,
                     thickness: 15.0,
@@ -442,26 +525,14 @@ export async function loadFriendsList() {
                 });
             });
         }
-    } catch (err) {
-        
-    } finally {
-        isLoadingFriends = false;
     }
+    isLoadingFriends = false;
 }
 
 export async function handleFriendAction(targetId, action) {
-    try {
-        const response = await fetch(`/api/friends/${action}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ target_id: targetId })
-        });
-
-        if (!response.ok) {
-            
-        }
-
-    } catch (err) {
-        
-    }
+    await apiFetch(`/api/friends/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_id: targetId })
+    }, false);
 }

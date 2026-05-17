@@ -1,5 +1,5 @@
 
-import { loadComponent } from './utils.js';
+import { loadComponent, apiFetch } from './utils.js';
 import { openInviteModal } from './modals.js';
 
 import { openServerSettings } from './serverSettings.js';
@@ -94,10 +94,8 @@ export async function showServerContextMenu(e, serverId, serverName, serverAvata
 
     if (settingsBtn) settingsBtn.style.display = 'none';
 
-    try {
-        const res = await fetch(`/api/servers/role?server_id=${serverId}`);
-        const data = await res.json();
-
+    const { ok, data } = await apiFetch(`/api/servers/role?server_id=${serverId}`, {}, false);
+    if (ok) {
         if (data.role === 'admin') {
             if (settingsBtn) settingsBtn.style.display = 'block';
         }
@@ -105,8 +103,5 @@ export async function showServerContextMenu(e, serverId, serverName, serverAvata
         if (window.setChatMutedState) {
             window.setChatMutedState(data.is_muted);
         }
-
-    } catch (err) {
-        
     }
 }

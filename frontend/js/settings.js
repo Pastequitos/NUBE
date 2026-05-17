@@ -1,5 +1,5 @@
 
-import { loadComponent, updateAllAvatarsInDOM } from './utils.js';
+import { loadComponent, updateAllAvatarsInDOM, apiFetch } from './utils.js';
 import { notify } from './notifications.js';
 import { openCropper } from './cropper.js';
 import { state } from './state.js';
@@ -40,14 +40,9 @@ export async function openSettings() {
     }
 
     if (bioInput) {
-        try {
-            const res = await fetch(`/api/user-profile?user_id=${state.userId}`);
-            if (res.ok) {
-                const data = await res.json();
-                bioInput.value = data.bio || "";
-            }
-        } catch (e) {
-            
+        const { ok, data } = await apiFetch(`/api/user-profile?user_id=${state.userId}`, {}, false);
+        if (ok) {
+            bioInput.value = data.bio || "";
         }
     }
 
@@ -68,30 +63,23 @@ export async function openSettings() {
                 avatarPreview.src = resultBase64;
                 avatarBase64 = resultBase64; 
 
-                try {
-                    const response = await fetch('/api/avatar', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ avatar: resultBase64 })
-                    });
+                const { ok } = await apiFetch('/api/avatar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ avatar: resultBase64 })
+                });
 
-                    if (response.ok) {
-                        notify.success("Photo de profil mise à jour !");
-                        
-                        state.userAvatar = resultBase64;
-                        
-                        const currentUserAvatar = document.getElementById('currentUserAvatar');
-                        if (currentUserAvatar) {
-                            currentUserAvatar.src = resultBase64;
-                        }
-
-                        updateAllAvatarsInDOM(state.userId, resultBase64);
-
-                    } else {
-                        notify.error("Erreur lors de la sauvegarde de la photo.");
+                if (ok) {
+                    notify.success("Photo de profil mise à jour !");
+                    
+                    state.userAvatar = resultBase64;
+                    
+                    const currentUserAvatar = document.getElementById('currentUserAvatar');
+                    if (currentUserAvatar) {
+                        currentUserAvatar.src = resultBase64;
                     }
-                } catch (err) {
-                    notify.error("Impossible de joindre le serveur.");
+
+                    updateAllAvatarsInDOM(state.userId, resultBase64);
                 }
             }
         });
@@ -109,28 +97,199 @@ export async function openSettings() {
             saveBtn.innerText = "Sauvegarde en cours...";
             saveBtn.disabled = true;
 
-            try {
-                const res = await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+            const { ok } = await apiFetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (ok) {
+                notify.success("Profil mis à jour avec succès !");
+            }
+
+            saveBtn.innerText = "Enregistrer";
+            saveBtn.disabled = false;
+        });
+    }
+
+    // Gestion du choix de l'arrière-plan
+    const currentBg = localStorage.getItem('nubeBackground') || "/frontend/assets/background/bg1.jpg";
+    const bgOptions = settingsContainer.querySelectorAll('.bg-option');
+    const bgUploadOpt = settingsContainer.querySelector('.bg-upload-option');
+    const bgInput = document.getElementById('settingsBgInput');
+
+    // Charger l'aperçu du background personnalisé si actif au chargement
+    if (bgUploadOpt && currentBg.startsWith('/uploads/background/')) {
+        const bgWithBuster = currentBg + `?t=${Date.now()}`;
+        bgUploadOpt.style.backgroundImage = `url("${bgWithBuster}")`;
+        bgUploadOpt.dataset.bg = currentBg;
+    }
+
+    bgOptions.forEach(opt => {
+        if (opt.classList.contains('bg-upload-option')) return; // Géré séparément ci-dessous
+
+        if (opt.dataset.bg === currentBg) {
+            opt.classList.add('active');
+        }
+
+        opt.addEventListener('click', async () => {
+            bgOptions.forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+
+            const selectedBg = opt.dataset.bg;
+            localStorage.setItem('nubeBackground', selectedBg);
+
+            // Mise à jour de l'arrière-plan CSS avec cache buster si applicable
+            const bgWithBuster = selectedBg + (selectedBg.startsWith('/uploads/') ? `?t=${Date.now()}` : '');
+            document.body.style.background = `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("${bgWithBuster}")`;
+            document.body.style.backgroundSize = "cover";
+            document.body.style.backgroundAttachment = "fixed";
+            document.body.style.backgroundPosition = "center";
+
+            // Mise à jour temps réel de l'effet de réfraction Liquid Glass
+            const { changeLiquidGlassBackground } = await import('./liquidGlass.js');
+            changeLiquidGlassBackground(bgWithBuster);
+
+            // Synchronisation instantanée avec la base de données pour persister sur tous les appareils
+            await apiFetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ background: selectedBg })
+            });
+        });
+    });
+
+    if (bgUploadOpt && bgInput) {
+        if (bgUploadOpt.dataset.bg === currentBg) {
+            bgUploadOpt.classList.add('active');
+        }
+
+        bgUploadOpt.addEventListener('click', () => {
+            // Si l'utilisateur clique alors qu'il a déjà un fond personnalisé, on lui applique ou on lui permet d'en choisir un autre
+            if (bgUploadOpt.dataset.bg && !bgUploadOpt.classList.contains('active')) {
+                bgOptions.forEach(o => o.classList.remove('active'));
+                bgUploadOpt.classList.add('active');
+                
+                const selectedBg = bgUploadOpt.dataset.bg;
+                localStorage.setItem('nubeBackground', selectedBg);
+
+                const bgWithBuster = selectedBg + `?t=${Date.now()}`;
+
+                document.body.style.background = `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("${bgWithBuster}")`;
+                document.body.style.backgroundSize = "cover";
+                document.body.style.backgroundAttachment = "fixed";
+                document.body.style.backgroundPosition = "center";
+
+                import('./liquidGlass.js').then(({ changeLiquidGlassBackground }) => {
+                    changeLiquidGlassBackground(bgWithBuster);
                 });
 
-                if (res.ok) {
-                    notify.success("Profil mis à jour avec succès !");
+                apiFetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ background: selectedBg })
+                });
+            } else {
+                bgInput.click();
+            }
+        });
 
+        // Double-cliquer ou faire un long clic sur la case + permet de changer l'image même si elle est déjà active
+        bgUploadOpt.addEventListener('dblclick', () => {
+            bgInput.click();
+        });
+
+        bgInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                notify.error("Le fichier sélectionné n'est pas une image.");
+                bgInput.value = "";
+                return;
+            }
+
+            try {
+                notify.info("Conversion et optimisation de l'arrière-plan...");
+                const webpBase64 = await resizeAndCompressToWebP(file);
+
+                notify.info("Téléversement...");
+
+                const { ok, data } = await apiFetch('/api/background/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ background: webpBase64 })
+                });
+
+                if (ok && data.path) {
+                    notify.success("Arrière-plan personnalisé activé !");
+                    localStorage.setItem('nubeBackground', data.path);
+
+                    const bgWithBuster = data.path + `?t=${Date.now()}`;
+
+                    bgOptions.forEach(o => o.classList.remove('active'));
+                    bgUploadOpt.classList.add('active');
+                    bgUploadOpt.style.backgroundImage = `url("${bgWithBuster}")`;
+                    bgUploadOpt.dataset.bg = data.path;
+
+                    document.body.style.background = `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("${bgWithBuster}")`;
+                    document.body.style.backgroundSize = "cover";
+                    document.body.style.backgroundAttachment = "fixed";
+                    document.body.style.backgroundPosition = "center";
+
+                    const { changeLiquidGlassBackground } = await import('./liquidGlass.js');
+                    changeLiquidGlassBackground(bgWithBuster);
                 } else {
-                    const err = await res.json();
-                    notify.error(err.message || "Erreur lors de la mise à jour.");
+                    notify.error("Erreur lors du téléversement.");
                 }
+
             } catch (err) {
-                notify.error("Impossible de joindre le serveur.");
+                console.error(err);
+                notify.error(err.message || "Une erreur est survenue.");
             } finally {
-                saveBtn.innerText = "Enregistrer";
-                saveBtn.disabled = false;
+                bgInput.value = "";
             }
         });
     }
+
+    function resizeAndCompressToWebP(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX_WIDTH = 1920;
+                    const MAX_HEIGHT = 1080;
+
+                    if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+                        const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
+                        width = Math.round(width * ratio);
+                        height = Math.round(height * ratio);
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Conversion WebP à 80% qualité (ultra léger et superbe définition)
+                    const compressedBase64 = canvas.toDataURL('image/webp', 0.8);
+                    resolve(compressedBase64);
+                };
+                img.onerror = () => reject(new Error("Image corrompue ou format non supporté."));
+            };
+            reader.onerror = () => reject(new Error("Erreur de lecture du fichier."));
+        });
+    }
+
+
+
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             handleLogout(); 

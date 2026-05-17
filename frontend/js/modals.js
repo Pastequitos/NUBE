@@ -1,13 +1,16 @@
 
-import { loadComponent } from './utils.js';
+import { loadComponent, apiFetch, closeModalWithAnimation } from './utils.js';
 import { loadServers } from './server.js';
 
 import { notify } from './notifications.js';
-import { addLiquidGlassElement } from './liquidGlass.js';
+import { addLiquidGlassElement, applyLiquidGlass } from './liquidGlass.js';
+import { loadPrivateHistory } from './messages.js';
 
 export function setupModalListeners() {
     const openBtn = document.getElementById('openModalBtn');
     const modal = document.getElementById('modalContainer');
+
+    setupModalDelegation();
 
     if (openBtn && modal) {
         openBtn.onclick = async () => {
@@ -17,27 +20,15 @@ export function setupModalListeners() {
             const serverCard = modal.firstElementChild;
 
             if (serverCard) {
-                const uniqueId = `create-server-glass-${Date.now()}`;
-                serverCard.id = uniqueId;
-
-                const modalRadius = 42.0;
-
-                Array.from(serverCard.children).forEach(child => {
-                    child.style.position = 'relative';
-                    child.style.zIndex = '1';
+                applyLiquidGlass(serverCard, {
+                    radius: 42.0,
+                    bezel: 42.0,
+                    thickness: 50.0,
+                    ior: 2.2,
+                    brightness: 1.2,
+                    tint: 0.1,
+                    interactive: false
                 });
-
-                setTimeout(() => {
-                    addLiquidGlassElement(uniqueId, {
-                        radius: modalRadius,
-                        bezel: modalRadius,
-                        thickness: 50.0,    
-                        ior: 2.2,           
-                        brightness: 1.2,    
-                        tint: 0.1,
-                        interactive: false
-                    });
-                }, 10);
             }
 
             const form = document.getElementById('createServerForm');
@@ -46,11 +37,7 @@ export function setupModalListeners() {
             const joinBtn = document.getElementById('joinServerSubmitBtn');
             const closeModalBtn = document.getElementById('closeModalBtn');
 
-            const closeModal = () => {
-                modal.style.display = 'none';
-                if (serverNameInput) serverNameInput.value = '';
-                if (joinInput) joinInput.value = '';
-            };
+            const closeModal = () => closeModalWithAnimation(modal);
 
             if (closeModalBtn) closeModalBtn.onclick = closeModal;
 
@@ -67,22 +54,16 @@ export function setupModalListeners() {
                     const checkedColorInput = document.querySelector('input[name="serverColor"]:checked');
                     const selectedColor = checkedColorInput ? checkedColorInput.value : "#5865F2";
 
-                    try {
-                        const res = await fetch('/api/servers', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ name: serverName, color: selectedColor })
-                        });
+                    const { ok } = await apiFetch('/api/servers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: serverName, color: selectedColor })
+                    });
 
-                        if (res.ok) {
-                            closeModal();
-                            notify.success(`Le serveur "${serverName}" a été créé avec success !`);
-                            await loadServers();
-                        } else {
-                            notify.error("Erreur lors de la création du salon.");
-                        }
-                    } catch (err) {
-                        notify.error("Impossible de joindre le serveur.");
+                    if (ok) {
+                        closeModal();
+                        notify.success(`Le serveur "${serverName}" a été créé avec success !`);
+                        await loadServers();
                     }
                 };
             }
@@ -96,31 +77,21 @@ export function setupModalListeners() {
                         return;
                     }
 
-                    try {
-                        const res = await fetch('/api/join', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ token: token })
-                        });
+                    const { ok, data } = await apiFetch('/api/join', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: token })
+                    });
 
-                        if (res.ok) {
-                            const data = await res.json();
-
-                            if (data.already_joined) {
-                                notify.info(`Vous êtes déjà membre de ${data.server_name}. Redirection...`);
-                            } else {
-                                notify.success(`Vous avez rejoint ${data.server_name} avec succès !`);
-                            }
-
-                            closeModal();
-                            await loadServers();
-
+                    if (ok) {
+                        if (data.already_joined) {
+                            notify.info(`Vous êtes déjà membre de ${data.server_name}. Redirection...`);
                         } else {
-                            const errData = await res.json().catch(() => ({ message: "Erreur inconnue" }));
-                            notify.error(`Impossible de rejoindre le serveur : ${errData.message || "Erreur serveur"}`);
+                            notify.success(`Vous avez rejoint ${data.server_name} avec succès !`);
                         }
-                    } catch (err) {
-                        notify.error("Erreur de connexion au serveur.");
+
+                        closeModal();
+                        await loadServers();
                     }
                 };
             }
@@ -140,27 +111,15 @@ export async function openInviteModal(serverId, serverName) {
         const inviteCard = modalContainer.firstElementChild;
 
         if (inviteCard) {
-            const uniqueId = `invite-glass-${Date.now()}`;
-            inviteCard.id = uniqueId;
-
-            const modalRadius = 38.0;
-
-            Array.from(inviteCard.children).forEach(child => {
-                child.style.position = 'relative';
-                child.style.zIndex = '1';
+            applyLiquidGlass(inviteCard, {
+                radius: 38.0,
+                bezel: 38.0,
+                thickness: 50.0,
+                ior: 2.2,
+                brightness: 1.2,
+                tint: 0.1,
+                interactive: false
             });
-
-            setTimeout(() => {
-                addLiquidGlassElement(uniqueId, {
-                    radius: modalRadius,
-                    bezel: modalRadius,
-                    thickness: 50.0,    
-                    ior: 2.2,           
-                    brightness: 1.2,    
-                    tint: 0.1,
-                    interactive: false
-                });
-            }, 10);
         }
 
         const serverNameEl = document.getElementById('inviteServerName');
@@ -168,10 +127,7 @@ export async function openInviteModal(serverId, serverName) {
             serverNameEl.innerText = serverName ? serverName : "ce serveur";
         }
 
-        const closeModal = () => {
-            modalContainer.style.display = 'none';
-            modalContainer.innerHTML = '';
-        };
+        const closeModal = () => closeModalWithAnimation(modalContainer);
 
         modalContainer.onclick = (e) => {
             if (e.target === modalContainer || e.target.closest('#closeInviteModalBtn') || e.target.closest('#closeModalBtn')) {
@@ -183,14 +139,13 @@ export async function openInviteModal(serverId, serverName) {
         if (inputLink) {
             inputLink.value = "Génération du lien...";
 
-            const response = await fetch('/api/invites', {
+            const { ok, data } = await apiFetch('/api/invites', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ server_id: serverId })
-            });
+            }, false);
 
-            if (response.ok) {
-                const data = await response.json();
+            if (ok) {
                 inputLink.value = `${window.location.origin}/join/${data.token}`;
             } else {
                 inputLink.value = "Erreur de génération.";
@@ -215,6 +170,38 @@ export async function openInviteModal(serverId, serverName) {
             };
         }
     } catch (err) {
-        
+
     }
+}
+
+export function setupModalDelegation() {
+    const modal = document.getElementById('modalContainer');
+    if (!modal) return;
+
+    modal.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target === modal || target.closest('.close-modal-btn') || target.closest('#closeModalBtn') || target.closest('#closeServerSettings') || target.closest('#closeInviteModalBtn')) {
+            closeModalWithAnimation(modal);
+            return;
+        }
+
+        const dmBtn = target.closest('[data-action="dm-user"]');
+        if (dmBtn) {
+            const { id, nickname, avatar } = dmBtn.dataset;
+            loadPrivateHistory(id, nickname, avatar);
+            closeModalWithAnimation(modal);
+
+            apiFetch('/api/users/mark-private-read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target_id: id })
+            }, false);
+
+            const friendItem = document.querySelector(`.friend-item[data-id="${id}"]`);
+            if (friendItem) {
+                const badge = friendItem.querySelector('.unread-badge');
+                if (badge) badge.remove();
+            }
+        }
+    });
 }

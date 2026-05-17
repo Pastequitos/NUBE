@@ -209,7 +209,7 @@ export function initLiquidGlassEngine(backgroundImageUrl) {
 export function addLiquidGlassElement(targetId, options = {}) {
     const target = document.getElementById(targetId);
     if (!target) {
-        
+
         return;
     }
 
@@ -228,12 +228,13 @@ export function addLiquidGlassElement(targetId, options = {}) {
         base: { ...baseOptions },
         target: { ...baseOptions },
         current: { ...baseOptions },
-        interactive: options.interactive || false
+        interactive: options.interactive || false,
+        order: options.order || 0 // Nouvel index manuel (prioritaire sur la taille)
     };
 
     if (item.interactive) {
         target.addEventListener('mouseenter', () => {
-            item.target.thickness = item.base.thickness * 2.0; 
+            item.target.thickness = item.base.thickness * 2.0;
             item.target.brightness = item.base.brightness + 0.15;
         });
 
@@ -245,7 +246,7 @@ export function addLiquidGlassElement(targetId, options = {}) {
 
         target.addEventListener('mousedown', () => {
             item.target.thickness = item.base.thickness * 3.5;
-            item.target.ior = item.base.ior * 1.5; 
+            item.target.ior = item.base.ior * 1.5;
         });
 
         target.addEventListener('mouseup', () => {
@@ -255,6 +256,22 @@ export function addLiquidGlassElement(targetId, options = {}) {
     }
 
     glassElements.push(item);
+}
+
+export function applyLiquidGlass(element, options = {}) {
+    if (!element) return;
+
+    const uniqueId = element.id || `glass-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    element.id = uniqueId;
+
+    Array.from(element.children).forEach(child => {
+        child.style.position = 'relative';
+        child.style.zIndex = '1';
+    });
+
+    setTimeout(() => {
+        addLiquidGlassElement(uniqueId, options);
+    }, 10);
 }
 
 function renderLoop() {
@@ -274,11 +291,15 @@ function renderLoop() {
     const winH = window.innerHeight;
 
     const sortedElements = [...glassElements].sort((a, b) => {
+        // Priorité à l'ordre manuel
+        if (a.order !== b.order) return a.order - b.order;
+
+        // Sinon, tri par taille (les plus grands derrière)
         const rectA = a.element.getBoundingClientRect();
         const rectB = b.element.getBoundingClientRect();
         const areaA = rectA.width * rectA.height;
         const areaB = rectB.width * rectB.height;
-        return areaB - areaA; 
+        return areaB - areaA;
     });
 
     sortedElements.forEach(item => {
@@ -300,10 +321,24 @@ function renderLoop() {
         material.uniforms.uSpecular.value = item.current.specular;
         material.uniforms.uTint.value = item.current.tint;
 
-        const glY = winH - rect.bottom; 
+        const glY = winH - rect.bottom;
         renderer.setViewport(rect.left, glY, rect.width, rect.height);
         renderer.setScissor(rect.left, glY, rect.width, rect.height);
 
         renderer.render(scene, camera);
+    });
+}
+
+export function changeLiquidGlassBackground(backgroundImageUrl) {
+    if (!material) return;
+    const loader = new THREE.TextureLoader();
+    loader.setCrossOrigin('anonymous');
+    loader.load(backgroundImageUrl, (tex) => {
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        if (material && material.uniforms && material.uniforms.uBgTex) {
+            material.uniforms.uBgTex.value = tex;
+            material.uniforms.uBgAspect.value = tex.image.width / tex.image.height;
+        }
     });
 }

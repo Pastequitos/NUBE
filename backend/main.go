@@ -83,6 +83,8 @@ func main() {
 	mux.HandleFunc("/api/avatar", handlers.UpdateAvatarHandler(db))
 	mux.HandleFunc("/api/settings", handlers.UpdateSettingsHandler(db))
 	mux.HandleFunc("/api/user-profile", handlers.GetUserProfileHandler(db, hub))
+	mux.HandleFunc("/api/background/upload", handlers.UploadBackgroundHandler(db))
+
 
 	mux.HandleFunc("/ws", handlers.ServeWs(hub, db))
 
