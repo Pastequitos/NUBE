@@ -419,7 +419,13 @@ export async function loadFriendsList() {
 
     const { ok, data: allRelations } = await apiFetch('/api/friends/list', {}, false);
     if (ok) {
+        // 1. On vide le container principal
         container.innerHTML = '';
+
+        // 🌟 2. On crée dynamiquement la liste défilante #contactList
+        const contactList = document.createElement('div');
+        contactList.id = 'contactList';
+        container.appendChild(contactList);
 
         const pendingRequests = allRelations.filter(f => f.status === 'pending' && !f.is_requester);
 
@@ -427,11 +433,11 @@ export async function loadFriendsList() {
             const titlePending = document.createElement('div');
             titlePending.className = 'pending-section-title sectionTitle';
             titlePending.innerText = `Demandes en attente — ${pendingRequests.length}`;
-            container.appendChild(titlePending);
+            contactList.appendChild(titlePending); // 🔄 Changé pour contactList
 
             const pendingTemplate = await loadComponent('/frontend/components/contactContainer/pendingItem.html');
 
-            pendingRequests.forEach(req => {
+            reqs.forEach(req => {
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = pendingTemplate;
                 const item = tempDiv.firstElementChild;
@@ -451,8 +457,7 @@ export async function loadFriendsList() {
                 if (acceptBtn) acceptBtn.dataset.action = 'accept-friend';
                 if (declineBtn) declineBtn.dataset.action = 'decline-friend';
 
-                container.appendChild(item);
-
+                contactList.appendChild(item); // 🔄 Changé pour contactList
 
                 applyLiquidGlass(item, {
                     radius: 28.0,
@@ -468,7 +473,7 @@ export async function loadFriendsList() {
         const titleAmis = document.createElement('div');
         titleAmis.className = 'pending-section-title sectionTitle';
         titleAmis.innerText = "Messages privés";
-        container.appendChild(titleAmis);
+        contactList.appendChild(titleAmis); // 🔄 Changé pour contactList
 
         const friends = allRelations.filter(f => f.status === 'accepted');
 
@@ -476,7 +481,7 @@ export async function loadFriendsList() {
             const emptyMsg = document.createElement('div');
             emptyMsg.className = 'contact-empty-state';
             emptyMsg.innerText = "Aucun ami pour le moment.";
-            container.appendChild(emptyMsg);
+            contactList.appendChild(emptyMsg); // 🔄 Changé pour contactList
         } else {
             const contactTemplate = await loadComponent('/frontend/components/contactContainer/contactItem.html');
 
@@ -512,8 +517,7 @@ export async function loadFriendsList() {
                     item.classList.remove('online');
                 }
 
-                container.appendChild(item);
-
+                contactList.appendChild(item); // 🔄 Changé pour contactList
 
                 applyLiquidGlass(item, {
                     radius: 28.0,

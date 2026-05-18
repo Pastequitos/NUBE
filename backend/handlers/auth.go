@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"log"
 	"database/sql"
 	"encoding/json"
 	"forum/backend/utils"
+	"log"
 	"net/http"
 	"time"
 	"unicode"
@@ -38,8 +38,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 		var dummy string
 		err := db.QueryRow("SELECT id FROM users WHERE email = ?", user.Email).Scan(&dummy)
 		if err == nil {
-			
-			w.WriteHeader(http.StatusConflict) 
+			w.WriteHeader(http.StatusConflict)
 			json.NewEncoder(w).Encode(map[string]string{"message": "Cet email est déjà utilisé."})
 			return
 		} else if err != sql.ErrNoRows {
@@ -50,8 +49,7 @@ func RegisterHandler(db *sql.DB) http.HandlerFunc {
 
 		err = db.QueryRow("SELECT id FROM users WHERE nickname = ?", user.Nickname).Scan(&dummy)
 		if err == nil {
-			
-			w.WriteHeader(http.StatusConflict) 
+			w.WriteHeader(http.StatusConflict)
 			json.NewEncoder(w).Encode(map[string]string{"message": "Ce pseudo est déjà pris. Veuillez en choisir un autre."})
 			return
 		} else if err != sql.ErrNoRows {
@@ -100,13 +98,13 @@ func LoginHandler(db *sql.DB) http.HandlerFunc {
 		query := `SELECT id, nickname, password FROM users WHERE email = ? OR nickname = ?`
 		err := db.QueryRow(query, creds.Login, creds.Login).Scan(&user.ID, &user.Nickname, &user.Password)
 		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized) 
+			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{"message": "Email/Pseudo ou mot de passe incorrect"})
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(creds.Password)); err != nil {
-			w.WriteHeader(http.StatusUnauthorized) 
+			w.WriteHeader(http.StatusUnauthorized)
 			json.NewEncoder(w).Encode(map[string]string{"message": "Email/Pseudo ou mot de passe incorrect"})
 			return
 		}
