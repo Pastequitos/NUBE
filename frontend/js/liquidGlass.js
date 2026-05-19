@@ -289,6 +289,7 @@ function renderLoop() {
     renderer.setScissorTest(true);
 
     const winH = window.innerHeight;
+    const winW = window.innerWidth;
 
     const sortedElements = [...glassElements].sort((a, b) => {
         // Priorité à l'ordre manuel
@@ -305,7 +306,8 @@ function renderLoop() {
     sortedElements.forEach(item => {
         const rect = item.element.getBoundingClientRect();
 
-        if (rect.width === 0 || rect.height === 0 || rect.bottom < 0 || rect.top > winH) return;
+        if (rect.width === 0 || rect.height === 0 || rect.bottom < 0 || rect.top > winH || rect.right < 0 || rect.left > winW) return;
+
 
         const lerpSpeed = 0.15;
         item.current.thickness += (item.target.thickness - item.current.thickness) * lerpSpeed;

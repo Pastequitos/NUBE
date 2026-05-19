@@ -362,6 +362,9 @@ export function setupContactContainerDelegation() {
             const avatarSrc = friendItem.querySelector('.user-avatar-small').src;
             loadHistory('dm', userId, { nickname, avatar: avatarSrc });
 
+            const appEl = document.getElementById('app');
+            if (appEl) appEl.classList.add('is-chat-active');
+
             const badge = friendItem.querySelector('.unread-badge');
             if (badge) badge.remove();
 

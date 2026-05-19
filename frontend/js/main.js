@@ -76,6 +76,17 @@ async function initApp() {
         btnSettings.addEventListener('click', () => openSettings());
     }
 
+    const backBtn = document.getElementById('chatBackButton');
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            const appEl = document.getElementById('app');
+            if (appEl) {
+                appEl.classList.remove('is-chat-active');
+            }
+        });
+    }
+
+
     setTimeout(() => {
         const elements = [
             { id: 'chatHeader', config: { radius: 28.0, bezel: 28.0, thickness: 30.0, ior: 2.2, brightness: 0.8 } },

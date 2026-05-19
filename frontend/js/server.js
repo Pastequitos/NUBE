@@ -171,6 +171,9 @@ export async function selectServer(serverId, serverName = null) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ server_id: serverId })
     }, false);
+
+    const appEl = document.getElementById('app');
+    if (appEl) appEl.classList.add('is-chat-active');
 }
 
 export function setupServerListDelegation() {
