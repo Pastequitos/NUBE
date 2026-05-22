@@ -648,3 +648,96 @@
 .user-group-header:first-child {
     margin-top: 5px;
 }
+
+/* ==========================================
+   MODAL ET SETTINGS RESPONSIVES
+   ========================================== */
+@media (max-width: 768px) {
+    .settings-modal-wrapper {
+        flex-direction: column !important;
+        height: 95vh !important;
+        width: 95vw !important;
+        border-radius: var(--petitBorderRadius) !important;
+    }
+
+    .settings-sidebar {
+        width: 100% !important;
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding: 15px !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        gap: 12px !important;
+        height: auto !important;
+        flex-shrink: 0 !important;
+    }
+
+    .settings-server-name {
+        display: none !important;
+    }
+
+    .settings-tab {
+        padding: 8px 16px !important;
+        font-size: 13px !important;
+        display: inline-block !important;
+    }
+
+    .settings-tab:hover {
+        transform: none !important;
+    }
+
+    .settings-content {
+        padding: 20px !important;
+        overflow-y: auto !important;
+    }
+
+    .settings-overview-layout {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 20px !important;
+        margin-top: 15px !important;
+    }
+
+    .settings-danger-zone {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 15px !important;
+        text-align: center !important;
+        margin-top: 25px !important;
+    }
+
+    .settings-member-item {
+        flex-direction: column !important;
+        gap: 12px !important;
+        align-items: flex-start !important;
+        padding: 15px !important;
+    }
+
+    .settings-member-item .action-btns {
+        width: 100% !important;
+        justify-content: flex-end !important;
+    }
+
+    .close-settings-btn {
+        position: fixed !important;
+        top: 15px !important;
+        right: 15px !important;
+        z-index: 1000 !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+        border-radius: 50% !important;
+        padding: 5px !important;
+        gap: 0 !important;
+    }
+
+    .close-settings-btn span {
+        display: none !important;
+    }
+
+    .close-settings-btn svg {
+        width: 24px !important;
+        height: 24px !important;
+        padding: 2px !important;
+        border: none !important;
+    }
+}

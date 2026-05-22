@@ -122,3 +122,22 @@ initLiquidGlassEngine(bgWithBuster);
 initGlobalComponents().then(() => {
     checkAuth();
 });
+
+// Empêcher tout défilement horizontal parasite du navigateur (provoqué par les focus d'inputs ou autofocus mobiles)
+function forceZeroHorizontalScroll() {
+    window.scrollTo(0, window.scrollY);
+    if (document.body) document.body.scrollLeft = 0;
+    if (document.documentElement) document.documentElement.scrollLeft = 0;
+}
+
+window.addEventListener('scroll', () => {
+    if (window.scrollX !== 0) {
+        forceZeroHorizontalScroll();
+    }
+});
+
+// Appliquer au chargement initial et à intervalles réguliers pendant le démarrage
+forceZeroHorizontalScroll();
+for (let delay of [50, 100, 200, 300, 500, 1000, 2000]) {
+    setTimeout(forceZeroHorizontalScroll, delay);
+}

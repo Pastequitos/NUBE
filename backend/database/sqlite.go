@@ -29,7 +29,7 @@ func InitDB() (*sql.DB, error) {
 		last_name TEXT,
 		avatar TEXT DEFAULT '',
 		bio TEXT DEFAULT '',
-		background TEXT DEFAULT '/frontend/assets/background/bg1.jpg', -- 🌟 Intégré directement ici !
+		background TEXT DEFAULT '/frontend/assets/background/bg1.jpg',
 		last_server_id TEXT,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);

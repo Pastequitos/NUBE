@@ -97,3 +97,17 @@
         } */
     }
 }
+
+@media (max-width: 480px) {
+    .auth-container .auth-box {
+        width: 92% !important;
+        max-width: 400px !important;
+        padding: 20px !important;
+        border-radius: var(--petitBorderRadius) !important;
+    }
+
+    .auth-container #loginForm,
+    .auth-container #regForm {
+        width: 100% !important;
+    }
+}
