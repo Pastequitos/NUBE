@@ -440,7 +440,7 @@ export async function loadFriendsList() {
 
             const pendingTemplate = await loadComponent('/frontend/components/contactContainer/pendingItem.html');
 
-            reqs.forEach(req => {
+            pendingRequests.forEach(req => {
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = pendingTemplate;
                 const item = tempDiv.firstElementChild;

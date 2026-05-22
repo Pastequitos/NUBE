@@ -11,7 +11,6 @@ func InitDB() (*sql.DB, error) {
 		return nil, err
 	}
 
-	// Activation des clés étrangères pour SQLite
 	_, err = db.Exec("PRAGMA foreign_keys = ON;")
 	if err != nil {
 		return nil, err
