@@ -197,11 +197,44 @@ export function initLiquidGlassEngine(backgroundImageUrl) {
         material.uniforms.uBgAspect.value = tex.image.width / tex.image.height;
     });
 
-    window.addEventListener('resize', () => {
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        material.uniforms.uWinRes.value.set(window.innerWidth, window.innerHeight);
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    const resizeCanvas = () => {
+        if (!renderer || !material) return;
+
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        let offsetLeft = 0;
+        let offsetTop = 0;
+
+        if (window.visualViewport) {
+            const vv = window.visualViewport;
+            width = vv.width;
+            height = vv.height;
+            offsetLeft = vv.offsetLeft;
+            offsetTop = vv.offsetTop;
+
+            canvas.style.left = `${offsetLeft}px`;
+            canvas.style.top = `${offsetTop}px`;
+            canvas.style.width = `${width}px`;
+            canvas.style.height = `${height}px`;
+        } else {
+            canvas.style.left = '0px';
+            canvas.style.top = '0px';
+            canvas.style.width = '100vw';
+            canvas.style.height = '100vh';
+        }
+
+        const pixelRatio = Math.min(window.devicePixelRatio, 2);
+        renderer.setPixelRatio(pixelRatio);
+        renderer.setSize(width, height, false);
+        material.uniforms.uWinRes.value.set(width, height);
+    };
+
+    window.addEventListener('resize', resizeCanvas);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', resizeCanvas);
+        window.visualViewport.addEventListener('scroll', resizeCanvas);
+    }
+    resizeCanvas();
 
     requestAnimationFrame(renderLoop);
 }
@@ -288,8 +321,18 @@ function renderLoop() {
     renderer.clear();
     renderer.setScissorTest(true);
 
-    const winH = window.innerHeight;
-    const winW = window.innerWidth;
+    let winH = window.innerHeight;
+    let winW = window.innerWidth;
+    let offsetLeft = 0;
+    let offsetTop = 0;
+
+    if (window.visualViewport) {
+        const vv = window.visualViewport;
+        winH = vv.height;
+        winW = vv.width;
+        offsetLeft = vv.offsetLeft;
+        offsetTop = vv.offsetTop;
+    }
 
     const sortedElements = [...glassElements].sort((a, b) => {
         // Priorité à l'ordre manuel
@@ -306,7 +349,12 @@ function renderLoop() {
     sortedElements.forEach(item => {
         const rect = item.element.getBoundingClientRect();
 
-        if (rect.width === 0 || rect.height === 0 || rect.bottom < 0 || rect.top > winH || rect.right < 0 || rect.left > winW) return;
+        const visualLeft = rect.left - offsetLeft;
+        const visualTop = rect.top - offsetTop;
+        const visualRight = rect.right - offsetLeft;
+        const visualBottom = rect.bottom - offsetTop;
+
+        if (rect.width === 0 || rect.height === 0 || visualBottom < 0 || visualTop > winH || visualRight < 0 || visualLeft > winW) return;
 
 
         const lerpSpeed = 0.15;
@@ -314,7 +362,7 @@ function renderLoop() {
         item.current.brightness += (item.target.brightness - item.current.brightness) * lerpSpeed;
         item.current.ior += (item.target.ior - item.current.ior) * lerpSpeed;
 
-        material.uniforms.uRect.value.set(rect.left, rect.top, rect.width, rect.height);
+        material.uniforms.uRect.value.set(visualLeft, visualTop, rect.width, rect.height);
         material.uniforms.uRadius.value = item.current.radius;
         material.uniforms.uBezel.value = item.current.bezel;
         material.uniforms.uThickness.value = item.current.thickness;
@@ -323,9 +371,9 @@ function renderLoop() {
         material.uniforms.uSpecular.value = item.current.specular;
         material.uniforms.uTint.value = item.current.tint;
 
-        const glY = winH - rect.bottom;
-        renderer.setViewport(rect.left, glY, rect.width, rect.height);
-        renderer.setScissor(rect.left, glY, rect.width, rect.height);
+        const glY = winH - visualBottom;
+        renderer.setViewport(visualLeft, glY, rect.width, rect.height);
+        renderer.setScissor(visualLeft, glY, rect.width, rect.height);
 
         renderer.render(scene, camera);
     });
