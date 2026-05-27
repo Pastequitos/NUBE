@@ -197,44 +197,11 @@ export function initLiquidGlassEngine(backgroundImageUrl) {
         material.uniforms.uBgAspect.value = tex.image.width / tex.image.height;
     });
 
-    const resizeCanvas = () => {
-        if (!renderer || !material) return;
-
-        let width = window.innerWidth;
-        let height = window.innerHeight;
-        let offsetLeft = 0;
-        let offsetTop = 0;
-
-        if (window.visualViewport) {
-            const vv = window.visualViewport;
-            width = vv.width;
-            height = vv.height;
-            offsetLeft = vv.offsetLeft;
-            offsetTop = vv.offsetTop;
-
-            canvas.style.left = `${offsetLeft}px`;
-            canvas.style.top = `${offsetTop}px`;
-            canvas.style.width = `${width}px`;
-            canvas.style.height = `${height}px`;
-        } else {
-            canvas.style.left = '0px';
-            canvas.style.top = '0px';
-            canvas.style.width = '100vw';
-            canvas.style.height = '100vh';
-        }
-
-        const pixelRatio = Math.min(window.devicePixelRatio, 2);
-        renderer.setPixelRatio(pixelRatio);
-        renderer.setSize(width, height, false);
-        material.uniforms.uWinRes.value.set(width, height);
-    };
-
-    window.addEventListener('resize', resizeCanvas);
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', resizeCanvas);
-        window.visualViewport.addEventListener('scroll', resizeCanvas);
-    }
-    resizeCanvas();
+    window.addEventListener('resize', () => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        material.uniforms.uWinRes.value.set(window.innerWidth, window.innerHeight);
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
     requestAnimationFrame(renderLoop);
 }
@@ -321,59 +288,44 @@ function renderLoop() {
     renderer.clear();
     renderer.setScissorTest(true);
 
-    let winH = window.innerHeight;
-    let winW = window.innerWidth;
-    let offsetLeft = 0;
-    let offsetTop = 0;
-    let scale = 1;
-
-    if (window.visualViewport) {
-        const vv = window.visualViewport;
-        winH = vv.height;
-        winW = vv.width;
-        offsetLeft = vv.offsetLeft;
-        offsetTop = vv.offsetTop;
-        scale = vv.scale;
-    }
+    const winH = window.innerHeight;
+    const winW = window.innerWidth;
 
     const sortedElements = [...glassElements].sort((a, b) => {
+        // Priorité à l'ordre manuel
         if (a.order !== b.order) return a.order - b.order;
+
+        // Sinon, tri par taille (les plus grands derrière)
         const rectA = a.element.getBoundingClientRect();
         const rectB = b.element.getBoundingClientRect();
-        return (rectB.width * rectB.height) - (rectA.width * rectA.height);
+        const areaA = rectA.width * rectA.height;
+        const areaB = rectB.width * rectB.height;
+        return areaB - areaA;
     });
 
     sortedElements.forEach(item => {
         const rect = item.element.getBoundingClientRect();
 
-        const visualLeft = (rect.left - offsetLeft) * scale;
-        const visualTop = (rect.top - offsetTop) * scale;
-        const visualWidth = rect.width * scale;
-        const visualHeight = rect.height * scale;
+        if (rect.width === 0 || rect.height === 0 || rect.bottom < 0 || rect.top > winH || rect.right < 0 || rect.left > winW) return;
 
-        const visualRight = visualLeft + visualWidth;
-        const visualBottom = visualTop + visualHeight;
-
-        if (rect.width === 0 || rect.height === 0 || visualBottom < 0 || visualTop > (winH * scale) || visualRight < 0 || visualLeft > (winW * scale)) return;
 
         const lerpSpeed = 0.15;
         item.current.thickness += (item.target.thickness - item.current.thickness) * lerpSpeed;
         item.current.brightness += (item.target.brightness - item.current.brightness) * lerpSpeed;
         item.current.ior += (item.target.ior - item.current.ior) * lerpSpeed;
 
-        material.uniforms.uRect.value.set(visualLeft, visualTop, visualWidth, visualHeight);
-        material.uniforms.uRadius.value = item.current.radius * scale;
-        material.uniforms.uBezel.value = item.current.bezel * scale;
-        material.uniforms.uThickness.value = item.current.thickness * scale;
+        material.uniforms.uRect.value.set(rect.left, rect.top, rect.width, rect.height);
+        material.uniforms.uRadius.value = item.current.radius;
+        material.uniforms.uBezel.value = item.current.bezel;
+        material.uniforms.uThickness.value = item.current.thickness;
         material.uniforms.uIOR.value = item.current.ior;
         material.uniforms.uBrightness.value = item.current.brightness;
         material.uniforms.uSpecular.value = item.current.specular;
         material.uniforms.uTint.value = item.current.tint;
 
-        const glY = (winH * scale) - visualBottom;
-
-        renderer.setViewport(visualLeft, glY, visualWidth, visualHeight);
-        renderer.setScissor(visualLeft, glY, visualWidth, visualHeight);
+        const glY = winH - rect.bottom;
+        renderer.setViewport(rect.left, glY, rect.width, rect.height);
+        renderer.setScissor(rect.left, glY, rect.width, rect.height);
 
         renderer.render(scene, camera);
     });
