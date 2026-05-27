@@ -31,7 +31,8 @@
             width: 100%;
         }
 
-        #loginForm, #regForm {
+        #loginForm,
+        #regForm {
             display: flex;
             flex-direction: column;
             gap: var(--petitPadding);
@@ -66,7 +67,7 @@
             transition: all 0.2s var(--cubic);
             margin-top: var(--padding);
 
-/*             &:hover {
+            /*             &:hover {
                 background-color: white;
                 color: black;
             } */
@@ -90,7 +91,7 @@
         transition: all 0.2s var(--cubic);
         text-decoration: none;
 
-/*         &:hover {
+        /*         &:hover {
             background-color: white;
             color: black;
 
@@ -103,7 +104,6 @@
         width: 92% !important;
         max-width: 400px !important;
         padding: 20px !important;
-        border-radius: var(--petitBorderRadius) !important;
     }
 
     .auth-container #loginForm,

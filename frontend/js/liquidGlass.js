@@ -325,6 +325,7 @@ function renderLoop() {
     let winW = window.innerWidth;
     let offsetLeft = 0;
     let offsetTop = 0;
+    let scale = 1;
 
     if (window.visualViewport) {
         const vv = window.visualViewport;
@@ -332,48 +333,47 @@ function renderLoop() {
         winW = vv.width;
         offsetLeft = vv.offsetLeft;
         offsetTop = vv.offsetTop;
+        scale = vv.scale;
     }
 
     const sortedElements = [...glassElements].sort((a, b) => {
-        // Priorité à l'ordre manuel
         if (a.order !== b.order) return a.order - b.order;
-
-        // Sinon, tri par taille (les plus grands derrière)
         const rectA = a.element.getBoundingClientRect();
         const rectB = b.element.getBoundingClientRect();
-        const areaA = rectA.width * rectA.height;
-        const areaB = rectB.width * rectB.height;
-        return areaB - areaA;
+        return (rectB.width * rectB.height) - (rectA.width * rectA.height);
     });
 
     sortedElements.forEach(item => {
         const rect = item.element.getBoundingClientRect();
 
-        const visualLeft = rect.left - offsetLeft;
-        const visualTop = rect.top - offsetTop;
-        const visualRight = rect.right - offsetLeft;
-        const visualBottom = rect.bottom - offsetTop;
+        const visualLeft = (rect.left - offsetLeft) * scale;
+        const visualTop = (rect.top - offsetTop) * scale;
+        const visualWidth = rect.width * scale;
+        const visualHeight = rect.height * scale;
 
-        if (rect.width === 0 || rect.height === 0 || visualBottom < 0 || visualTop > winH || visualRight < 0 || visualLeft > winW) return;
+        const visualRight = visualLeft + visualWidth;
+        const visualBottom = visualTop + visualHeight;
 
+        if (rect.width === 0 || rect.height === 0 || visualBottom < 0 || visualTop > (winH * scale) || visualRight < 0 || visualLeft > (winW * scale)) return;
 
         const lerpSpeed = 0.15;
         item.current.thickness += (item.target.thickness - item.current.thickness) * lerpSpeed;
         item.current.brightness += (item.target.brightness - item.current.brightness) * lerpSpeed;
         item.current.ior += (item.target.ior - item.current.ior) * lerpSpeed;
 
-        material.uniforms.uRect.value.set(visualLeft, visualTop, rect.width, rect.height);
-        material.uniforms.uRadius.value = item.current.radius;
-        material.uniforms.uBezel.value = item.current.bezel;
-        material.uniforms.uThickness.value = item.current.thickness;
+        material.uniforms.uRect.value.set(visualLeft, visualTop, visualWidth, visualHeight);
+        material.uniforms.uRadius.value = item.current.radius * scale;
+        material.uniforms.uBezel.value = item.current.bezel * scale;
+        material.uniforms.uThickness.value = item.current.thickness * scale;
         material.uniforms.uIOR.value = item.current.ior;
         material.uniforms.uBrightness.value = item.current.brightness;
         material.uniforms.uSpecular.value = item.current.specular;
         material.uniforms.uTint.value = item.current.tint;
 
-        const glY = winH - visualBottom;
-        renderer.setViewport(visualLeft, glY, rect.width, rect.height);
-        renderer.setScissor(visualLeft, glY, rect.width, rect.height);
+        const glY = (winH * scale) - visualBottom;
+
+        renderer.setViewport(visualLeft, glY, visualWidth, visualHeight);
+        renderer.setScissor(visualLeft, glY, visualWidth, visualHeight);
 
         renderer.render(scene, camera);
     });

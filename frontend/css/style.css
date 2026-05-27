@@ -1315,7 +1315,6 @@ canvas {
         width: 90vw !important;
         max-width: 450px !important;
         padding: 20px !important;
-        border-radius: var(--petitBorderRadius) !important;
     }
 
     .modal-content.create-join-modal {
@@ -1339,7 +1338,6 @@ canvas {
     .profile-card {
         width: 90vw !important;
         max-width: 320px !important;
-        border-radius: var(--petitBorderRadius) !important;
     }
 
     input,
