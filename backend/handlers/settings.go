@@ -57,8 +57,9 @@ func GetUserProfileHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
 
         var bio sql.NullString
         var createdAt sql.NullString
+        var avatar sql.NullString
 
-        err := db.QueryRow("SELECT bio, created_at FROM users WHERE id = ?", userID).Scan(&bio, &createdAt)
+        err := db.QueryRow("SELECT bio, created_at, avatar FROM users WHERE id = ?", userID).Scan(&bio, &createdAt, &avatar)
         
         if err != nil && err != sql.ErrNoRows {
             log.Printf("❌ Erreur dans GetUserProfileHandler : %v", err)
@@ -76,6 +77,11 @@ func GetUserProfileHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
             finalCreatedAt = createdAt.String
         }
 
+        finalAvatar := ""
+        if avatar.Valid {
+            finalAvatar = avatar.String
+        }
+
         isOnline := false
         for client := range hub.Clients {
             if client.UserID == userID {
@@ -89,6 +95,7 @@ func GetUserProfileHandler(db *sql.DB, hub *Hub) http.HandlerFunc {
             "bio":        finalBio,
             "created_at": finalCreatedAt,
             "is_online":  isOnline,
+            "avatar":     finalAvatar,
         })
     }
 }

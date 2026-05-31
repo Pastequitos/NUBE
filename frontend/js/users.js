@@ -235,6 +235,15 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
 
     const { ok, data } = await apiFetch(`/api/user-profile?user_id=${userId}`, {}, false);
     if (ok) {
+        const dbAvatar = data.avatar || DEFAULT_AVATAR;
+        if (profileAvatar) {
+            profileAvatar.src = dbAvatar;
+        }
+        if (profileBanner && data.avatar) {
+            extractBannerGradient(data.avatar).then(gradient => {
+                profileBanner.style.background = gradient;
+            });
+        }
 
         if (bioTextElement) {
             bioTextElement.innerText = data.bio && data.bio.trim() !== ""
@@ -271,7 +280,7 @@ export async function openUserProfile(userId, nickname, avatarSrc) {
         if (dmBtn) {
             dmBtn.dataset.id = userId;
             dmBtn.dataset.nickname = nickname;
-            dmBtn.dataset.avatar = avatarSrc;
+            dmBtn.dataset.avatar = dbAvatar;
             dmBtn.dataset.action = 'dm-user';
         }
 
