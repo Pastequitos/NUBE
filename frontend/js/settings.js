@@ -1,5 +1,5 @@
 
-import { loadComponent, updateAllAvatarsInDOM, apiFetch } from './utils.js';
+import { loadComponent, updateAllAvatarsInDOM, apiFetch, closeModalWithAnimation } from './utils.js';
 import { notify } from './notifications.js';
 import { openCropper } from './cropper.js';
 import { state } from './state.js';
@@ -293,6 +293,99 @@ export async function openSettings() {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             handleLogout(); 
+        });
+    }
+
+    const deleteAccountBtn = document.getElementById('deleteAccountBtn');
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', async () => {
+            const modalContainer = document.getElementById('modalContainer');
+            if (!modalContainer) return;
+
+            modalContainer.innerHTML = await loadComponent('/frontend/components/modalContainer/deleteAccount.html');
+            modalContainer.style.display = 'flex';
+
+            const modalContent = modalContainer.firstElementChild;
+            if (modalContent) {
+                const { applyLiquidGlass } = await import('./liquidGlass.js');
+                applyLiquidGlass(modalContent, {
+                    radius: 38.0,
+                    bezel: 38.0,
+                    thickness: 50.0,
+                    ior: 2.2,
+                    brightness: 1.2,
+                    tint: 0.1,
+                    interactive: false
+                });
+            }
+
+            const cancelBtn = document.getElementById('cancelDeleteBtn');
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+
+            const closeModal = () => closeModalWithAnimation(modalContainer);
+
+            if (cancelBtn) {
+                cancelBtn.onclick = closeModal;
+            }
+
+            modalContainer.onclick = (e) => {
+                if (e.target === modalContainer) {
+                    closeModal();
+                }
+            };
+
+            if (confirmBtn) {
+                confirmBtn.onclick = async () => {
+                    confirmBtn.innerText = "Suppression...";
+                    confirmBtn.disabled = true;
+
+                    const { ok } = await apiFetch('/api/users/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    if (ok) {
+                        closeModal();
+                        
+                        // Close settings panel
+                        const settingsContainer = document.getElementById('settings');
+                        if (settingsContainer) {
+                            settingsContainer.classList.remove('open');
+                            settingsContainer.style.display = 'none';
+                            settingsContainer.innerHTML = '';
+                        }
+
+                        // Remove custom background local storage
+                        localStorage.removeItem('nubeBackground');
+
+                        // Reset background body to default
+                        document.body.style.background = `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("/frontend/assets/background/bg1.jpg")`;
+                        document.body.style.backgroundSize = "cover";
+                        document.body.style.backgroundAttachment = "fixed";
+                        document.body.style.backgroundPosition = "center";
+
+                        // Update WebGL refraction LERP
+                        import('./liquidGlass.js').then(({ changeLiquidGlassBackground }) => {
+                            changeLiquidGlassBackground("/frontend/assets/background/bg1.jpg");
+                        }).catch(err => console.error(err));
+
+                        state.currentUser = null;
+                        state.userId = null;
+                        if (state.socket) state.socket.close();
+
+                        notify.success("Ton compte a été supprimé définitivement.");
+
+                        // Import router dynamically to avoid circular import issues
+                        import('./auth.js').then(({ router }) => {
+                            router('login');
+                        });
+                    } else {
+                        confirmBtn.innerText = "Confirmer";
+                        confirmBtn.disabled = false;
+                        notify.error("Impossible de supprimer le compte. Réessaie plus tard.");
+                    }
+                };
+            }
         });
     }
 }

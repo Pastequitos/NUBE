@@ -490,7 +490,8 @@ func DeleteUserHandler(db *sql.DB) http.HandlerFunc {
 		}
 
 		var userAvatar sql.NullString
-		_ = db.QueryRow("SELECT avatar FROM users WHERE id = ?", myID).Scan(&userAvatar)
+		var userBackground sql.NullString
+		_ = db.QueryRow("SELECT avatar, background FROM users WHERE id = ?", myID).Scan(&userAvatar, &userBackground)
 
 		rows, err := db.Query("SELECT avatar FROM servers WHERE owner_id = ?", myID)
 		var serverAvatars []string
@@ -515,6 +516,13 @@ func DeleteUserHandler(db *sql.DB) http.HandlerFunc {
 			oldPath := "." + userAvatar.String
 			if strings.HasPrefix(oldPath, "./uploads/") {
 				os.Remove(oldPath)
+			}
+		}
+
+		if userBackground.Valid && userBackground.String != "" {
+			oldBgPath := "." + userBackground.String
+			if strings.HasPrefix(oldBgPath, "./uploads/") {
+				os.Remove(oldBgPath)
 			}
 		}
 
