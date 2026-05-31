@@ -673,6 +673,7 @@ p {
                 #sendBtnWrapper {
                     height: 80px;
                     width: 80px;
+                    /* http: //localhost:8080/frontend/css/setting.png */
 
                     #sendMessage {
                         width: 100%;
@@ -686,6 +687,19 @@ p {
                         background-color: var(--glass);
                         transition: all 0.2s var(--cubic);
                         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+
+                        &::before {
+                            content: '';
+                            background-image: url("/frontend/assets/img/send.png") !important;
+                            background-size: 40%;
+                            background-position: 45% 55%;
+                            background-repeat: no-repeat;
+                            width: 100%;
+                            height: 100%;
+                            display: block;
+
+                        }
                     }
                 }
             }
